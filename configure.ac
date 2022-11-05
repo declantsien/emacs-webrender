@@ -479,6 +479,7 @@ AC_ARG_WITH([ns],[AS_HELP_STRING([--with-ns],
 On by default on macOS.])],[],[with_ns=maybe])
 OPTION_DEFAULT_OFF([w32], [use native MS Windows GUI in a Cygwin build])
 OPTION_DEFAULT_OFF([pgtk], [use GTK to support window systems other than X])
+OPTION_DEFAULT_OFF([wr], [use WebRender to support window systems])
 
 OPTION_DEFAULT_ON([gpm],[don't use -lgpm for mouse support on a GNU/Linux console])
 OPTION_DEFAULT_ON([dbus],[don't compile with D-Bus support])
@@ -681,6 +682,12 @@ AC_ARG_ENABLE([build-details],
 		   names, time stamps, etc. from the output.])],
   [test "$enableval" = no && BUILD_DETAILS=--no-build-details])
 AC_SUBST([BUILD_DETAILS])
+
+AC_ARG_ENABLE(rust-debug,
+[AS_HELP_STRING([--enable-rust-debug],
+		[build rust-src in debug mode
+		 Useful for debugging rust component of emacs-ng.])],
+[ac_enable_rust_debug="${enableval}"],[])
 
 dnl This used to use changequote, but, apart from 'changequote is evil'
 dnl per the autoconf manual, we can speed up autoconf somewhat by quoting
@@ -1942,11 +1949,11 @@ AC_SUBST([AUTO_DEPEND])
 ## window-system-specific substs.
 
 window_system=none
+alternative_window_systems=
 
 if test "${with_pgtk}" = "yes"; then
   window_system=pgtk
 fi
-
 
 AC_PATH_X
 if test "$no_x" != yes && test "${with_pgtk}" != "yes"; then
@@ -2387,6 +2394,18 @@ AC_SUBST([HAIKU_OBJ])
 AC_SUBST([HAIKU_CXX_OBJ])
 AC_SUBST([HAIKU_CFLAGS])
 
+HAVE_WR=no
+if test "${with_wr}" = "yes"; then
+   AS_VAR_APPEND([alternative_window_systems], [wr])
+   if test "${window_system}" = "none"; then
+     window_system=wr
+   fi
+   HAVE_WR=yes
+   AC_DEFINE(HAVE_WR, 1,
+      [Define to 1 if you want to use the webrender.])
+fi
+AC_SUBST([HAVE_WR])
+
 ## $window_system is now set to the window system we will
 ## ultimately use.
 
@@ -2436,6 +2455,9 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
   ;;
   haiku )
     term_header=haikuterm.h
+  ;;
+  wr )
+    term_header=wrterm.h
   ;;
 esac
 AC_SUBST([HAVE_PGTK])
@@ -2776,7 +2798,8 @@ fi
 HAVE_RSVG=no
 if test "${HAVE_X11}" = "yes" || test "${HAVE_NS}" = "yes" \
    || test "${opsys}" = "mingw32" || test "${HAVE_BE_APP}" = "yes" \
-   || test "${window_system}" = "pgtk"; then
+   || test "${window_system}" = "pgtk" \
+   || test "${HAVE_WR}" = "yes"; then
   if test "${with_rsvg}" != "no"; then
     RSVG_REQUIRED=2.14.0
     RSVG_MODULE="librsvg-2.0 >= $RSVG_REQUIRED"
@@ -3052,6 +3075,71 @@ if test "$window_system" = "pgtk"; then
 fi
 AC_SUBST([PGTK_OBJ])
 AC_SUBST([PGTK_LIBS])
+
+### Rust related
+
+CARGO_BUILD=
+CARGO_CLEAN=
+CARGO_TEST=
+CARGO_FLAGS=
+RUST_BINDGEN_CFLAGS=
+
+if test "${HAVE_WR}" = "yes"; then
+
+   RUST_BINDGEN_CFLAGS="-pthread -DEMACS_EXTERN_INLINE"
+
+   AC_CHECK_PROGS([RUSTC], [rustc], [yes], [no])
+   if test "$RUSTC" = "no"; then
+      AC_MSG_ERROR( [You do not seem to have rustc.] )
+   fi
+
+   AC_CHECK_PROG([CARGO], [cargo], [yes], [no])
+   if test "$CARGO" = "no"; then
+      AC_MSG_ERROR( [You do not seem to have cargo.] )
+   fi
+
+   CARGO_BUILD="cargo build"
+   CARGO_CLEAN="cargo clean"
+   CARGO_TEST="cargo test"
+
+   if test x$ac_enable_rust_debug = x ; then
+      CARGO_FLAGS="--release"
+   fi
+fi
+AC_SUBST(RUST_BINDGEN_CFLAGS)
+AC_SUBST(CARGO_BUILD)
+AC_SUBST(CARGO_CLEAN)
+AC_SUBST(CARGO_TEST)
+AC_SUBST(CARGO_FLAGS)
+
+### end of rust related
+
+WR_OBJ=
+WR_LIBS=
+LIBWRTERM_ARCHIVE=
+if test "${HAVE_WR}" = "yes"; then
+  case $opsys in
+    gnu-linux|darwin) LIBWRTERM_ARCHIVE=libwrterm.a ;;
+    *) LIBWRTERM_ARCHIVE=libwrterm.lib ;;
+  esac
+
+  WR_OBJ="wrterm.o wrfns.o"
+
+  if test "$opsys" = "gnu-linux"; then
+    EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
+      test "$HAVE_XCB" = "no" && AC_MSG_ERROR(webrender requires libxcb)
+    WR_LIBS="${WR_LIBS} -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
+  fi
+
+  EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
+  test "$HAVE_FONTCONFIG" = "no" && AC_MSG_ERROR(webrender requires libfontconfig)
+
+  AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
+  NATIVE_IMAGE_API="yes (webrender)"
+fi
+AC_SUBST(WR_OBJ)
+AC_SUBST(WR_LIBS)
+AC_SUBST(LIBWRTERM_ARCHIVE)
 
 AC_CHECK_FUNCS([malloc_trim])
 
@@ -6431,7 +6519,10 @@ case "$opsys" in
   cygwin) LD_SWITCH_SYSTEM_TEMACS="-Wl,-stack,0x00800000" ;;
 
   darwin)
-   if test "$HAVE_NS" = "yes"; then
+   if test "${HAVE_WR}" = "yes"; then
+     libs_nsgui="-framework AppKit -framework IOKit -framework Carbon \
+                 -framework IOSurface -framework QuartzCore -framework OpenGL"
+   elif test "$HAVE_NS" = "yes"; then
      libs_nsgui="-framework AppKit"
      if test "$NS_IMPL_COCOA" = "yes"; then
         libs_nsgui="$libs_nsgui -framework IOKit -framework Carbon \
@@ -6610,7 +6701,7 @@ Configured for '${canonical}'.
   Should Emacs use the GNU version of malloc?             ${GNU_MALLOC}${GNU_MALLOC_reason}
   Should Emacs use a relocating allocator for buffers?    ${REL_ALLOC}
   Should Emacs use mmap(2) for buffer allocation?         $use_mmap_for_buffers
-  What window system should Emacs use?                    ${window_system}
+  What window systems should Emacs use?                   ${window_system} ${alternative_window_systems}
   What toolkit should Emacs use?                          ${USE_X_TOOLKIT}
   Where do we find X Windows header files?                ${x_includes:-$emacs_standard_dirs}
   Where do we find X Windows libraries?                   ${x_libraries:-$emacs_standard_dirs}"])
@@ -6797,6 +6888,7 @@ if test -d $srcdir/admin; then
   AC_CONFIG_FILES([admin/grammars/Makefile])
 fi                              dnl -d admin
 
+AC_CONFIG_FILES([src/lisp_types/build.rs])
 
 SUBDIR_MAKEFILES_IN=`echo " ${SUBDIR_MAKEFILES}" | sed -e 's| | $(srcdir)/|g' -e 's|Makefile|Makefile.in|g'`
 

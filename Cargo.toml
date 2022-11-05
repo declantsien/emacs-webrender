@@ -1,0 +1,29 @@
+[workspace]
+
+members = [
+  "src/lisp_types",
+  "src/lisp_macros",
+  "src/lisp_util",
+  "src/wr",
+]
+
+resolver = "2"
+
+[profile.dev]
+opt-level = 1
+rpath = false
+lto = false
+debug-assertions = true
+panic = "abort"
+
+[profile.release]
+opt-level = 2
+rpath = false
+debug-assertions = false
+panic = "abort"
+
+[profile.dev.build-override]
+opt-level = 1
+
+[profile.release.build-override]
+opt-level = 1

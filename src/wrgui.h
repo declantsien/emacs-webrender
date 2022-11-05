@@ -24,6 +24,16 @@ typedef struct _XGCValues
 {
   unsigned long foreground;
   unsigned long background;
+
+  /* Dots per inch of the screen.  */
+  double resx, resy;
+
+  /* Number of planes on this screen.  */
+  int n_planes;
+
+  /* Mask of things that cause the mouse to be grabbed.  */
+  int grabbed;
+
   struct font *font;
 } XGCValues;
 

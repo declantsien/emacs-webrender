@@ -63,7 +63,8 @@ enum output_method
   output_w32,
   output_ns,
   output_pgtk,
-  output_haiku
+  output_haiku,
+  output_wr
 };
 
 /* Input queue declarations and hooks.  */
@@ -522,6 +523,7 @@ struct terminal
     struct ns_display_info *ns;       /* nsterm.h */
     struct pgtk_display_info *pgtk; /* pgtkterm.h */
     struct haiku_display_info *haiku; /* haikuterm.h */
+    struct wr_display_info *wr; /* wrterm.h */
   } display_info;
 
 
@@ -595,7 +597,7 @@ struct terminal
      BGCOLOR.  */
   void (*query_frame_background_color) (struct frame *f, Emacs_Color *bgcolor);
 
-#if defined (HAVE_X_WINDOWS) || defined (HAVE_NTGUI) || defined (HAVE_PGTK)
+#if defined (HAVE_X_WINDOWS) || defined (HAVE_NTGUI) || defined (HAVE_PGTK) || defined (HAVE_WR)
   /* On frame F, translate pixel colors to RGB values for the NCOLORS
      colors in COLORS.  Use cached information, if available.  */
 
@@ -930,6 +932,9 @@ extern struct terminal *terminal_list;
 #elif defined (HAVE_HAIKU)
 #define TERMINAL_FONT_CACHE(t)						\
   (t->type == output_haiku ? t->display_info.haiku->name_list_element : Qnil)
+#elif defined (HAVE_WR)
+#define TERMINAL_FONT_CACHE(t)						\
+  (t->type == output_wr ? t->display_info.wr ->name_list_element : Qnil)
 #endif
 
 extern struct terminal *decode_live_terminal (Lisp_Object);

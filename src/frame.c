@@ -250,6 +250,8 @@ See also `frame-live-p'.  */)
       return Qpgtk;
     case output_haiku:
       return Qhaiku;
+    case output_wr:
+      return Qwr;
     default:
       emacs_abort ();
     }
@@ -6169,6 +6171,7 @@ syms_of_frame (void)
   DEFSYM (Qns, "ns");
   DEFSYM (Qpgtk, "pgtk");
   DEFSYM (Qhaiku, "haiku");
+  DEFSYM (Qwr, "wr");
   DEFSYM (Qvisible, "visible");
   DEFSYM (Qbuffer_predicate, "buffer-predicate");
   DEFSYM (Qbuffer_list, "buffer-list");

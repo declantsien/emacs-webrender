@@ -175,6 +175,26 @@ typedef struct haiku_bitmap_record Bitmap_Record;
 
 #endif
 
+#ifdef HAVE_WR
+typedef struct wr_bitmap_record Bitmap_Record;
+
+#define GET_PIXEL(ximg, x, y) wr_get_pixel(ximg, x, y)
+#define PUT_PIXEL(ximg, x, y, pixel) wr_put_pixel(ximg, x, y, pixel)
+#define NO_PIXMAP 0
+
+#define PIX_MASK_RETAIN	0
+#define PIX_MASK_DRAW	1
+
+void image_sync_to_pixmaps (struct frame *, struct image *);
+
+void image_pixmap_draw_cross(struct frame *, Emacs_Pixmap, int, int, unsigned int,
+  unsigned int, unsigned long);
+
+void image_pixmap_draw_cross(struct frame *, Emacs_Pixmap, int, int, unsigned int,
+  unsigned int, unsigned long);
+
+#endif /* HAVE_WR */
+
 static void image_disable_image (struct frame *, struct image *);
 static void image_edge_detection (struct frame *, struct image *, Lisp_Object,
                                   Lisp_Object);
@@ -2618,6 +2638,10 @@ image_set_transform (struct frame *f, struct image *img)
 
   /* Determine flipping.  */
   flip = !NILP (image_spec_value (img->spec, QCflip, NULL));
+
+#ifdef HAVE_WR
+  return wr_transform_image(f, img, width, height, rotation);
+#endif /* HAVE_WR */
 
 # if defined USE_CAIRO || defined HAVE_XRENDER || defined HAVE_NS || defined HAVE_HAIKU
   /* We want scale up operations to use a nearest neighbor filter to
@@ -7049,6 +7073,8 @@ image_can_use_native_api (Lisp_Object type)
   return ns_can_use_native_image_api (type);
 # elif defined HAVE_HAIKU
   return haiku_can_use_native_image_api (type);
+# elif defined HAVE_WR
+  return wr_can_use_native_image_api (type);
 # else
   return false;
 # endif
@@ -7125,6 +7151,9 @@ native_image_load (struct frame *f, struct image *img)
 # elif defined HAVE_HAIKU
   return haiku_load_image (f, img, image_file,
 			   image_spec_value (img->spec, QCdata, NULL));
+# elif defined HAVE_WR
+  return wr_load_image (f, img, image_file,
+                        image_spec_value (img->spec, QCdata, NULL));
 # else
   return 0;
 # endif
@@ -11889,7 +11918,7 @@ The list of capabilities can include one or more of the following:
     {
 #ifdef HAVE_NATIVE_TRANSFORMS
 # if defined HAVE_IMAGEMAGICK || defined (USE_CAIRO) || defined (HAVE_NS) \
-  || defined (HAVE_HAIKU)
+  || defined (HAVE_HAIKU) || defined (HAVE_WR)
       return list2 (Qscale, Qrotate90);
 # elif defined (HAVE_X_WINDOWS) && defined (HAVE_XRENDER)
       if (FRAME_DISPLAY_INFO (f)->xrender_supported_p)

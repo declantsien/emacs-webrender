@@ -144,6 +144,15 @@ typedef Emacs_Pixmap Emacs_Pix_Container;
 typedef Emacs_Pixmap Emacs_Pix_Context;
 #endif
 
+#ifdef HAVE_WR
+#include "wrgui.h"
+typedef struct wr_display_info Display_Info;
+typedef WRImage *XImagePtr;
+typedef XImagePtr XImagePtr_or_DC;
+typedef Emacs_Pixmap Emacs_Pix_Container;
+typedef Emacs_Pixmap Emacs_Pix_Context;
+#endif /* HAVE_WR */
+
 #ifdef HAVE_WINDOW_SYSTEM
 # include <time.h>
 # include "fontset.h"
@@ -1408,6 +1417,9 @@ struct glyph_string
 #endif
 #if defined (HAVE_PGTK)
   Emacs_GC xgcv;
+#endif
+#if defined (HAVE_WR)
+  Emacs_GC *gc;
 #endif
 
   /* A pointer to the first glyph in the string.  This glyph
@@ -3059,7 +3071,8 @@ struct redisplay_interface
 #ifdef HAVE_WINDOW_SYSTEM
 
 # if (defined USE_CAIRO || defined HAVE_XRENDER \
-      || defined HAVE_NS || defined HAVE_NTGUI || defined HAVE_HAIKU)
+      || defined HAVE_NS || defined HAVE_NTGUI || defined HAVE_HAIKU \
+      || defined HAVE_WR)
 #  define HAVE_NATIVE_TRANSFORMS
 # endif
 

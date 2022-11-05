@@ -377,7 +377,7 @@ struct frame
   /* The output method says how the contents of this frame are
      displayed.  It could be using termcap, or using an X window.
      This must be the same as the terminal->type. */
-  ENUM_BF (output_method) output_method : 3;
+  ENUM_BF (output_method) output_method : 9;
 
 #ifdef HAVE_WINDOW_SYSTEM
   /* True if this frame is a tooltip frame.  */
@@ -592,6 +592,7 @@ struct frame
     struct ns_output *ns;       /* From nsterm.h.  */
     struct pgtk_output *pgtk; /* From pgtkterm.h. */
     struct haiku_output *haiku; /* From haikuterm.h. */
+    struct wr_output *wr; /* From wrterm.h. */
   }
   output_data;
 
@@ -872,6 +873,11 @@ default_pixels_per_inch_y (void)
 #else
 #define FRAME_HAIKU_P(f) ((f)->output_method == output_haiku)
 #endif
+#ifndef HAVE_WR
+#define FRAME_WR_P(f) false
+#else
+#define FRAME_WR_P(f) ((f)->output_method == output_wr)
+#endif
 
 /* FRAME_WINDOW_P tests whether the frame is a graphical window system
    frame.  */
@@ -889,6 +895,9 @@ default_pixels_per_inch_y (void)
 #endif
 #ifdef HAVE_HAIKU
 #define FRAME_WINDOW_P(f) FRAME_HAIKU_P (f)
+#endif
+#ifdef HAVE_WR
+#define FRAME_WINDOW_P(f) FRAME_WR_P(f)
 #endif
 #ifndef FRAME_WINDOW_P
 #define FRAME_WINDOW_P(f) ((void) (f), false)

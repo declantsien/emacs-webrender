@@ -607,6 +607,26 @@ x_free_gc (struct frame *f, Emacs_GC *gc)
 }
 #endif  /* HAVE_NS */
 
+#ifdef HAVE_WR
+/* webrender emulation of GCs */
+
+static GC
+x_create_gc (struct frame *f,
+	     unsigned long mask,
+	     Emacs_GC *xgcv)
+{
+  GC gc = malloc (sizeof *gc);
+  *gc = *xgcv;
+  return gc;
+}
+
+static void
+x_free_gc (struct frame *f, GC gc)
+{
+  free (gc);
+}
+#endif  /* HAVE_WR */
+
 /***********************************************************************
 			   Frames and faces
  ***********************************************************************/
