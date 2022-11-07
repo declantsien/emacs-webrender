@@ -6,6 +6,7 @@ extern crate lisp_types;
 extern crate lisp_macros;
 #[macro_use]
 extern crate lisp_util;
+extern crate colors;
 
 // mod platform {
 //     #[cfg(target_os = "macos")]

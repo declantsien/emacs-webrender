@@ -4,6 +4,7 @@ members = [
   "src/lisp_types",
   "src/lisp_macros",
   "src/lisp_util",
+  "etc/colors",
   "src/wr",
 ]
 
