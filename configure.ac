@@ -3131,9 +3131,6 @@ if test "${HAVE_WR}" = "yes"; then
     WR_LIBS="${WR_LIBS} -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
   fi
 
-  EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
-  test "$HAVE_FONTCONFIG" = "no" && AC_MSG_ERROR(webrender requires libfontconfig)
-
   AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
   NATIVE_IMAGE_API="yes (webrender)"
 fi
@@ -6521,7 +6518,8 @@ case "$opsys" in
   darwin)
    if test "${HAVE_WR}" = "yes"; then
      libs_nsgui="-framework AppKit -framework IOKit -framework Carbon \
-                 -framework IOSurface -framework QuartzCore -framework OpenGL"
+                 -framework IOSurface -framework QuartzCore -framework OpenGL \
+		 -framework Metal"
    elif test "$HAVE_NS" = "yes"; then
      libs_nsgui="-framework AppKit"
      if test "$NS_IMPL_COCOA" = "yes"; then

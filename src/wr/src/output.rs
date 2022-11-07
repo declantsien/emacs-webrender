@@ -1,19 +1,24 @@
 use std::{cell::RefCell, mem::MaybeUninit, rc::Rc, sync::Arc};
 
+use euclid::default::Size2D;
 use gleam::gl::{self, Gl};
-use glutin::{
-    self,
-    dpi::PhysicalSize,
-    window::{CursorIcon, Window},
-    ContextWrapper, PossiblyCurrent,
-};
+use log::warn;
 use std::{
     ops::{Deref, DerefMut},
     ptr,
 };
+use surfman::Connection;
+use surfman::GLApi;
+use surfman::SurfaceType;
+use webrender_surfman::WebrenderSurfman;
+use winit::{
+    self,
+    dpi::PhysicalSize,
+    window::{CursorIcon, Window},
+};
 
 #[cfg(not(any(target_os = "macos", windows)))]
-use glutin::platform::unix::WindowBuilderExtUnix;
+use winit::platform::unix::WindowBuilderExtUnix;
 
 use webrender::{self, api::units::*, api::*, RenderApi, Renderer, Transaction};
 
@@ -41,6 +46,8 @@ pub struct Output {
 
     pub render_api: RenderApi,
     pub document_id: DocumentId,
+    pipeline_id: PipelineId,
+    epoch: Epoch,
 
     display_list_builder: Option<DisplayListBuilder>,
     previous_frame_image: Option<ImageKey>,
@@ -48,8 +55,6 @@ pub struct Output {
     pub background_color: ColorF,
     pub cursor_color: ColorF,
     pub cursor_foreground_color: ColorF,
-
-    color_bits: u8,
 
     // The drop order is important here.
 
@@ -59,14 +64,16 @@ pub struct Output {
     // Need to droppend before window context
     renderer: Renderer,
 
-    window_context: ContextWrapper<PossiblyCurrent, Window>,
+    window: winit::window::Window,
+    webrender_surfman: WebrenderSurfman,
+    gl: Rc<dyn gl::Gl>,
 
     frame: LispFrameRef,
 }
 
 impl Output {
     pub fn build(event_loop: &mut WrEventLoop, frame: LispFrameRef) -> Self {
-        let window_builder = glutin::window::WindowBuilder::new()
+        let window_builder = winit::window::WindowBuilder::new()
             .with_visible(true)
             .with_maximized(true);
 
@@ -74,38 +81,52 @@ impl Output {
         let window_builder = {
             let invocation_name: LispStringRef = unsafe { globals.Vinvocation_name.into() };
             let invocation_name = invocation_name.to_utf8();
-            window_builder.with_app_id(invocation_name)
+            window_builder.with_name(invocation_name, "")
         };
 
-        let context_builder = glutin::ContextBuilder::new();
+        let window = window_builder.build(&event_loop.el()).unwrap();
+        let window_id = window.id();
 
-        let window_context = event_loop
-            .build_window(window_builder, context_builder)
-            .unwrap();
+        // Initialize surfman
+        let connection =
+            Connection::from_winit_window(&window).expect("Failed to create connection");
+        let adapter = connection
+            .create_adapter()
+            .expect("Failed to create adapter");
+        let native_widget = connection
+            .create_native_widget_from_winit_window(&window)
+            .expect("Failed to create native widget");
+        let surface_type = SurfaceType::Widget { native_widget };
+        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
+            .expect("Failed to create WR surfman");
 
-        let window_id = window_context.window().id();
+        // Get GL bindings
+        let gl = match webrender_surfman.connection().gl_api() {
+            GLApi::GL => unsafe { gl::GlFns::load_with(|s| webrender_surfman.get_proc_address(s)) },
+            GLApi::GLES => unsafe {
+                gl::GlesFns::load_with(|s| webrender_surfman.get_proc_address(s))
+            },
+        };
 
-        event_loop.wait_for_window_resize(window_id);
+        let gl = gl::ErrorCheckingGl::wrap(gl);
 
-        let window_context = unsafe { window_context.make_current() }.unwrap();
+	println!("OpenGL version {}", gl.get_string(gl::VERSION));
+	let device_pixel_ratio = window.scale_factor() as f32;
+	println!("Device pixel ratio: {}", device_pixel_ratio);
 
-        let window = window_context.window();
+	// Make sure the gl context is made current.
+	webrender_surfman.make_gl_context_current().unwrap();
+	debug_assert_eq!(gl.get_error(), gleam::gl::NO_ERROR,);
 
-        window_context.resize(window.inner_size());
-
-        let gl = Self::get_gl_api(&window_context);
-
-        let webrender_opts = webrender::RendererOptions {
+        let webrender_opts = webrender::WebRenderOptions {
             clear_color: ColorF::new(1.0, 1.0, 1.0, 1.0),
-            ..webrender::RendererOptions::default()
+            ..webrender::WebRenderOptions::default()
         };
 
-        let notifier = Box::new(Notifier::new());
-
+	let notifier = Box::new(Notifier::new(event_loop.create_proxy()));
         let (mut renderer, sender) =
-            webrender::Renderer::new(gl.clone(), notifier, webrender_opts, None).unwrap();
-
-        let color_bits = window_context.get_pixel_format().color_bits;
+            webrender::create_webrender_instance(gl.clone(), notifier, webrender_opts, None)
+                .unwrap();
 
         let texture_resources = Rc::new(RefCell::new(TextureResourceManager::new(
             gl.clone(),
@@ -116,34 +137,33 @@ impl Output {
 
         renderer.set_external_image_handler(external_image_handler);
 
+        let epoch = Epoch(0);
         let pipeline_id = PipelineId(0, 0);
-        let mut txn = Transaction::new();
-        txn.set_root_pipeline(pipeline_id);
 
-        let device_size = {
+	let mut api = sender.create_api();
+	let device_size = {
             let size = window.inner_size();
             DeviceIntSize::new(size.width as i32, size.height as i32)
         };
-
-        let mut api = sender.create_api();
-
-        let document_id = api.add_document(device_size);
-        api.send_transaction(document_id, txn);
+	let document_id = api.add_document(device_size);
 
         let mut output = Self {
             output: wr_output::default(),
+            window,
             font: FontRef::new(ptr::null_mut()),
             fontset: 0,
             render_api: api,
             document_id,
+            pipeline_id,
+            gl,
+            epoch,
             display_list_builder: None,
             previous_frame_image: None,
             background_color: ColorF::WHITE,
             cursor_color: ColorF::BLACK,
             cursor_foreground_color: ColorF::WHITE,
-            color_bits,
             renderer,
-            window_context,
+            webrender_surfman,
             texture_resources,
             frame,
         };
@@ -175,7 +195,7 @@ impl Output {
             need_flip,
         );
 
-        let gl = Self::get_gl_api(&self.window_context);
+        let gl = &self.gl;
         gl.bind_texture(gl::TEXTURE_2D, texture_id);
 
         gl.copy_tex_sub_image_2d(
@@ -194,18 +214,6 @@ impl Output {
         image_key
     }
 
-    fn get_gl_api(window_context: &ContextWrapper<PossiblyCurrent, Window>) -> Rc<dyn Gl> {
-        match window_context.get_api() {
-            glutin::Api::OpenGl => unsafe {
-                gl::GlFns::load_with(|symbol| window_context.get_proc_address(symbol) as *const _)
-            },
-            glutin::Api::OpenGlEs => unsafe {
-                gl::GlesFns::load_with(|symbol| window_context.get_proc_address(symbol) as *const _)
-            },
-            glutin::Api::WebGl => unimplemented!(),
-        }
-    }
-
     fn get_size(window: &Window) -> LayoutSize {
         let physical_size = window.inner_size();
         let device_size = LayoutSize::new(physical_size.width as f32, physical_size.height as f32);
@@ -213,7 +221,7 @@ impl Output {
     }
 
     fn new_builder(&mut self, image: Option<(ImageKey, LayoutRect)>) -> DisplayListBuilder {
-        let pipeline_id = PipelineId(0, 0);
+        let pipeline_id = self.pipeline_id;
 
         let layout_size = Self::get_size(&self.get_window());
         let mut builder = DisplayListBuilder::new(pipeline_id);
@@ -297,13 +305,9 @@ impl Output {
     }
 
     fn ensure_context_is_current(&mut self) {
-        let window_context = std::mem::replace(&mut self.window_context, unsafe {
-            MaybeUninit::uninit().assume_init()
-        });
-        let window_context = unsafe { window_context.make_current() }.unwrap();
-
-        let temp_context = std::mem::replace(&mut self.window_context, window_context);
-        std::mem::forget(temp_context);
+	// Make sure the gl context is made current.
+        self.webrender_surfman.make_gl_context_current().unwrap();
+	debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR,);
     }
 
     pub fn flush(&mut self) {
@@ -316,16 +320,25 @@ impl Output {
             let mut txn = Transaction::new();
 
             txn.set_display_list(epoch, None, layout_size.to_f32(), builder.end());
+	    txn.set_root_pipeline(self.pipeline_id);
+            txn.generate_frame(0, RenderReasons::NONE);
+
 
             self.display_list_builder = None;
-
-            txn.generate_frame(0, RenderReasons::NONE);
 
             self.render_api.send_transaction(self.document_id, txn);
 
             self.render_api.flush_scene_builder();
 
             let device_size = self.get_deivce_size();
+
+	    // Bind the webrender framebuffer
+            let framebuffer_object = self.webrender_surfman
+		.context_surface_info()
+		.unwrap_or(None)
+		.map(|info| info.framebuffer_object)
+		.unwrap_or(0);
+            self.gl.bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
 
             self.renderer.update();
 
@@ -334,12 +347,15 @@ impl Output {
             self.renderer.render(device_size, 0).unwrap();
             let _ = self.renderer.flush_pipeline_info();
 
-            self.window_context.swap_buffers().ok();
-
             self.texture_resources.borrow_mut().clear();
 
             let image_key = self.copy_framebuffer_to_texture(DeviceIntRect::from_size(device_size));
             self.previous_frame_image = Some(image_key);
+
+	    // Perform the page flip. This will likely block for a while.
+            if let Err(err) = self.webrender_surfman.present() {
+                warn!("Failed to present surface: {:?}", err);
+            }
         }
     }
 
@@ -382,11 +398,16 @@ impl Output {
     }
 
     pub fn get_color_bits(&self) -> u8 {
-        self.color_bits
+        // let descriptor = self.device.context_descriptor(&ctx);
+        // let descriptor_attributes = self.device.context_descriptor_attributes(&descriptor);
+        // let gl_version = descriptor_attributes.version;
+        // also https://github.com/rust-windowing/glutin/blob/v0.29.1/glutin/src/platform_impl/macos/mod.rs#L105
+        //TODO check surfman context attributes
+        24
     }
 
     pub fn get_window(&self) -> &Window {
-        self.window_context.window()
+        &self.window
     }
 
     fn build_mouse_cursors(output: &mut Output) {
@@ -467,7 +488,8 @@ impl Output {
         txn.set_document_view(device_rect);
         self.render_api.send_transaction(self.document_id, txn);
 
-        self.window_context.resize(size.clone());
+        self.webrender_surfman
+            .resize(Size2D::new(size.width as i32, size.height as i32)).unwrap();
     }
 }
 
@@ -517,27 +539,32 @@ impl From<*mut wr_output> for OutputRef {
     }
 }
 
-struct Notifier;
+struct Notifier {
+    events_proxy: winit::event_loop::EventLoopProxy<(i32)>,
+}
 
 impl Notifier {
-    fn new() -> Notifier {
-        Notifier
+    fn new(events_proxy: winit::event_loop::EventLoopProxy<(i32)>) -> Notifier {
+        Notifier { events_proxy }
     }
 }
 
 impl RenderNotifier for Notifier {
     fn clone(&self) -> Box<dyn RenderNotifier> {
-        Box::new(Notifier)
+        Box::new(Notifier {
+            events_proxy: self.events_proxy.clone(),
+        })
     }
 
-    fn wake_up(&self, _composite_needed: bool) {}
+    fn wake_up(&self, _composite_needed: bool) {
+        // #[cfg(not(target_os = "android"))]
+        // let _ = self.events_proxy.send_event((1));
+    }
 
-    fn new_frame_ready(
-        &self,
-        _: DocumentId,
-        _scrolled: bool,
-        _composite_needed: bool,
-        _render_time: Option<u64>,
-    ) {
+    fn new_frame_ready(&self,
+                       _: DocumentId,
+                       _scrolled: bool,
+                       composite_needed: bool) {
+        self.wake_up(composite_needed);
     }
 }

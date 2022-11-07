@@ -282,7 +282,7 @@
 (load "emacs-lisp/tabulated-list")
 (load "buff-menu")
 
-(if (fboundp 'x-create-frame)
+(if (or (fboundp 'x-create-frame) (fboundp 'wr-create-frame))
     (progn
       (load "fringe")
       ;; Needed by `imagemagick-register-types'

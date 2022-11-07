@@ -1,4 +1,4 @@
-;;; x-win.el --- parse relevant switches and set up for X  -*- lexical-binding:t -*-
+;;; wr-win.el --- parse relevant switches and set up for Webrender  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 1993-1994, 2001-2022 Free Software Foundation, Inc.
 
@@ -22,9 +22,9 @@
 
 ;;; Commentary:
 
-;; X-win.el: this file defines functions to initialize the X window
-;; system and process X-specific command line parameters before
-;; creating the first X frame.
+;; wr-win.el: this file defines functions to initialize the Webrender window
+;; system and process WR-specific command line parameters before
+;; creating the first WR frame.
 
 ;; Beginning in Emacs 23, the act of loading this file should not have
 ;; the side effect of initializing the window system or processing
@@ -69,7 +69,7 @@
 (eval-when-compile (require 'cl-lib))
 
 (if (not (fboundp 'x-create-frame))
-    (error "%s: Loading x-win.el but not compiled for X" invocation-name))
+    (error "%s: Loading wr-win.el but not compiled for Webrender" invocation-name))
 
 (require 'term/common-win)
 (require 'frame)

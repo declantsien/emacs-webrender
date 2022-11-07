@@ -173,7 +173,6 @@ impl ExternalImageHandler for ExternalHandler {
         &mut self,
         key: ExternalImageId,
         _channel_index: u8,
-        _rendering: ImageRendering,
     ) -> ExternalImage {
         let texture_id = key.0;
 

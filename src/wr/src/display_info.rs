@@ -1,4 +1,4 @@
-use glutin::window::WindowId;
+use winit::window::WindowId;
 use libc;
 use std::{collections::HashMap, ptr};
 

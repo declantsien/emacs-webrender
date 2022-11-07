@@ -1,6 +1,6 @@
 use crate::{frame::LispFrameExt, util::HandyDandyRectBuilder};
 
-use glutin::window::CursorIcon;
+use winit::window::CursorIcon;
 
 use lisp_types::{
     bindings::{

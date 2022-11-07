@@ -8,7 +8,7 @@ use lisp_types::{
     keyboard::KeyboardRef,
     lisp::LispObject,
 };
-use glutin::dpi::PhysicalPosition;
+use winit::dpi::PhysicalPosition;
 
 use crate::{event_loop::EVENT_LOOP, output::OutputRef};
 

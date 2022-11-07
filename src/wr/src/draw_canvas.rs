@@ -305,7 +305,7 @@ impl DrawCanvas {
                 .filter_map(|(n, glyph)| {
                     // TAB in a composition means display glyphs with padding
                     // space on the left or right.
-                    if s.composite_glyph(n as usize) == b'\t'.into() {
+                    if s.composite_glyph(n as usize) == <u8 as Into<i64>>::into(b'\t') {
                         return None;
                     }
 

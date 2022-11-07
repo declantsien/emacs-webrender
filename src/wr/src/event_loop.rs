@@ -12,19 +12,18 @@ use copypasta::{
 };
 
 use futures::future::FutureExt;
+use libc::{c_void, fd_set, pselect, sigset_t, timespec};
+use once_cell::sync::Lazy;
+use tokio::{io::unix::AsyncFd, runtime::Runtime, time::Duration};
 #[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
-use glutin::platform::unix::EventLoopWindowTargetExtUnix;
-use glutin::{
+use winit::platform::unix::EventLoopWindowTargetExtUnix;
+use winit::{
     event::{Event, StartCause, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
     monitor::MonitorHandle,
     platform::run_return::EventLoopExtRunReturn,
     window::{WindowBuilder, WindowId},
-    ContextBuilder, ContextCurrentState, CreationError, NotCurrent, WindowedContext,
 };
-use libc::{c_void, fd_set, pselect, sigset_t, timespec};
-use once_cell::sync::Lazy;
-use tokio::{io::unix::AsyncFd, runtime::Runtime, time::Duration};
 
 use crate::future::batch_select;
 
@@ -52,12 +51,8 @@ unsafe impl Send for WrEventLoop {}
 unsafe impl Sync for WrEventLoop {}
 
 impl WrEventLoop {
-    pub fn build_window<'a, T: ContextCurrentState>(
-        &mut self,
-        window_builder: WindowBuilder,
-        context_builder: ContextBuilder<'a, T>,
-    ) -> Result<WindowedContext<NotCurrent>, CreationError> {
-        context_builder.build_windowed(window_builder, &self.el)
+    pub fn el(&self) -> &EventLoop<i32> {
+        &self.el
     }
 
     pub fn create_proxy(&self) -> EventLoopProxy<i32> {
@@ -125,7 +120,7 @@ fn build_clipboard(event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
 }
 
 pub static EVENT_LOOP: Lazy<Mutex<WrEventLoop>> = Lazy::new(|| {
-    let el = glutin::event_loop::EventLoop::with_user_event();
+    let el = winit::event_loop::EventLoop::with_user_event();
     let clipboard = build_clipboard(&el);
 
     Mutex::new(WrEventLoop { clipboard, el })

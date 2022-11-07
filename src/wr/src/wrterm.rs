@@ -7,7 +7,7 @@ use std::ffi::CString;
 use std::ptr;
 
 use lisp_types::bindings::output_method;
-use glutin::{event::VirtualKeyCode, monitor::MonitorHandle};
+use winit::{event::VirtualKeyCode, monitor::MonitorHandle};
 
 use lisp_macros::lisp_fn;
 
