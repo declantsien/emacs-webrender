@@ -1,4 +1,8 @@
-language = "C"
+# This is a template cbindgen.toml file with all of the default values.
+# Some values are commented out because their absence is the real default.
+#
+# See https://github.com/eqrion/cbindgen/blob/master/docs.md#cbindgentoml
+# for detailed documentation of every option here.
 
 header = """
 /* Definitions and headers for communication with pure Gtk+3.
@@ -19,7 +23,14 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */"""
-
-include_guard = "__WRTERM_H_"
-includes = ["dispextern.h"]
-no_includes = true
+autogen_warning = """/* DO NOT MODIFY THIS MANUALLY! This file was generated using cbindgen.
+ * To generate this file:
+ *   1. Get the latest cbindgen using `cargo install --force cbindgen`
+ *      a. Alternatively, you can clone `https://github.com/eqrion/cbindgen` and use a tagged release
+ *   2. Run `rustup run nightly cbindgen toolkit/library/rust/ --lockfile Cargo.lock --crate webrender_bindings -o gfx/webrender_bindings/webrender_ffi_generated.h`
+ */"""
+include_version = true
+braces = "SameLine"
+line_length = 100
+tab_width = 2
+language = "C"

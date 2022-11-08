@@ -1,16 +1,19 @@
 // build.rs
 
+extern crate cbindgen;
+
+use std::path::PathBuf;
+use cbindgen::Config;
+
 use cargo_toml::Dependency;
 use cargo_toml::Manifest;
 use std::fs::read;
 
 use std::env;
 use std::fs;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
 use std::path::Path;
 
-const RGB_TXT_PATH: &str = "../../etc/rgb.txt";
 const WEBRENDER_DEP_NAME: &str = "webrender";
 
 fn generate_webrender_revision() {
@@ -25,7 +28,7 @@ fn generate_webrender_revision() {
             match webrender_dep {
                 Dependency::Detailed(detail) => detail.rev.as_ref().unwrap(),
                 Dependency::Simple(version) => version,
-		_ => "unknown"
+                _ => "unknown",
             }
         }
     };
@@ -43,60 +46,41 @@ fn generate_webrender_revision() {
     .unwrap();
 }
 
-fn generate_rgb_list() {
-    let file = BufReader::new(File::open(RGB_TXT_PATH).unwrap());
-    let color = file
-        .lines()
-        .filter_map(|line| line.ok())
-        .filter(|line| !line.trim().is_empty())
-        .filter(|line| !line.starts_with('#'))
-        .map(|line| {
-            let result = line
-                .trim()
-                .split("\t\t")
-                .map(|str| str.to_owned())
-                .collect::<Vec<String>>();
+fn generate_webrender_ffi() {
+    let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
-            let color = result[0]
-                .split_whitespace()
-                .map(|str| str.to_owned())
-                .collect::<Vec<String>>();
+    println!("{:?}", target_dir());
+    let package_name = env::var("CARGO_PKG_NAME").unwrap();
+    let output_file = target_dir()
+        .join(format!("{}.h.sdf", package_name))
+        .display()
+        .to_string();
 
-            let name = result[1].trim().to_lowercase();
+    let config = Config {
+        namespace: Some(String::from("ffi")),
+	language: cbindgen::Language::C,
+        ..Default::default()
+    };
 
-            let red = color[0].clone();
-            let green = color[1].clone();
-            let blue = color[2].clone();
-
-            (name, (red, green, blue))
-        });
-
-    let out_dir = env::var_os("OUT_DIR").unwrap();
-    let out_path = Path::new(&out_dir).join("colors.rs");
-
-    let color_function_body = format!(
-        "let mut color_map: HashMap<&'static str, (u8, u8, u8)> = HashMap::new(); {} color_map",
-        color
-            .map(|(name, (red, green, blue))| format!(
-                "color_map.insert(\"{}\", ({}, {}, {}));\n",
-                name, red, green, blue
-            ))
-            .collect::<Vec<String>>()
-            .concat()
-    );
-
-    let color_fun_source = format!(
-        "fn init_color() -> HashMap<&'static str, (u8, u8, u8)> {{ {} }}",
-        color_function_body
-    );
-
-    let mut file = File::create(out_path).unwrap();
-    file.write_all(color_fun_source.as_bytes()).unwrap();
+    cbindgen::generate_with_config(&crate_dir, config)
+	.unwrap()
+	.write_to_file(&output_file);
 }
 
 fn main() {
-    generate_rgb_list();
+    // generate_webrender_ffi();
     generate_webrender_revision();
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed={}", RGB_TXT_PATH);
+    println!("cargo:rerun-if-changed=cbindgen.toml");
+}
+
+/// Find the location of the `target/` directory. Note that this may be
+/// overridden by `cmake`, so we also need to check the `CARGO_TARGET_DIR`
+/// variable.
+fn target_dir() -> PathBuf {
+    if let Ok(target) = env::var("CARGO_MANIFEST_DIR") {
+        PathBuf::from(target)
+    } else {
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("target")
+    }
 }

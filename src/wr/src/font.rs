@@ -7,9 +7,9 @@ use webrender::api::*;
 
 use lisp_types::{
     bindings::{
-        font, font_driver, font_make_entity, font_make_object, font_metrics, font_property_index,
-        font_style_to_value, frame, glyph_string, intern, debug_print, Fassoc, Fcdr, Fcons, Fmake_symbol,
-        Fnreverse, FONT_INVALID_CODE,
+        debug_print, font, font_driver, font_make_entity, font_make_object, font_metrics,
+        font_property_index, font_style_to_value, frame, glyph_string, intern, Fassoc, Fcdr, Fcons,
+        Fmake_symbol, Fnreverse, FONT_INVALID_CODE,
     },
     frame::LispFrameRef,
     globals::{
@@ -22,6 +22,11 @@ use lisp_types::{
 };
 
 use crate::{font_db::FontDB, frame::LispFrameExt};
+
+pub enum FontData {
+    Raw(Vec<u8>, u32),
+    Native(NativeFontHandle),
+}
 
 pub type FontRef = ExternalPtr<font>;
 
@@ -140,24 +145,15 @@ extern "C" fn match_(_f: *mut frame, spec: LispObject) -> LispObject {
     let font_spec = LispFontLike(spec);
     let family = font_spec.get_family();
 
-    let fonts = if let Some(family) = family {
-        let family = match family.as_ref() {
-            "Serif" => Family::Serif,
-            "Sans Serif" => Family::SansSerif,
-            "Monospace" => Family::Monospace,
-            "Cursive" => Family::Cursive,
-            "Fantasy" => Family::Fantasy,
-            f => Family::Name(f),
-        };
-
-        FONT_DB.select_family(&family)
+    let face_infos = if let Some(family) = family {
+        FONT_DB.select_family(family.as_ref())
     } else {
         FONT_DB.all_fonts()
     };
 
     let mut list = Qnil;
 
-    for f in fonts {
+    for f in face_infos {
         let entity: LispFontLike = unsafe { font_make_entity() }.into();
 
         // set type
@@ -316,7 +312,7 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let val = unsafe { Fassoc(":postscript-name".into(), font_extra, Qnil) };
 
-    let font = if val.is_nil() {
+    let face_info = if val.is_nil() {
         let family = font_entity.get_family().unwrap();
 
         let slant = font_entity.get_slant().unwrap();
@@ -353,15 +349,17 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let (font_bytes, face_index) = FONT_DB
         .db
-        .with_face_data(font.id, |font_data, face_index| {
+        .with_face_data(face_info.id, |font_data, face_index| {
             let font_bytes = Rc::new(font_data.to_vec());
             (font_bytes, face_index)
         })
         .unwrap();
 
-    // Create font key in webrender.
-    let font_key = output.add_font(font_bytes.clone(), face_index);
-    wr_font.font_instance_key = output.add_font_instance(font_key, pixel_size as i32);
+    // Create font instance key in webrender.
+    wr_font.font_instance_key = output.add_font_instance_by_data(
+        FontData::Raw(font_bytes.to_vec(), face_index),
+        pixel_size as i32,
+    );
 
     wr_font.font_bytes = ManuallyDrop::new(font_bytes.clone());
 

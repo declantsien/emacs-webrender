@@ -32,7 +32,7 @@ use crate::event_loop::WrEventLoop;
 use super::texture::TextureResourceManager;
 use super::util::HandyDandyRectBuilder;
 use super::{cursor::emacs_to_winit_cursor, display_info::DisplayInfoRef};
-use super::{cursor::winit_to_emacs_cursor, font::FontRef};
+use super::{cursor::winit_to_emacs_cursor, font::FontData, font::FontRef};
 
 #[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
 use lisp_types::{bindings::globals, multibyte::LispStringRef};
@@ -110,20 +110,20 @@ impl Output {
 
         let gl = gl::ErrorCheckingGl::wrap(gl);
 
-	println!("OpenGL version {}", gl.get_string(gl::VERSION));
-	let device_pixel_ratio = window.scale_factor() as f32;
-	println!("Device pixel ratio: {}", device_pixel_ratio);
+        println!("OpenGL version {}", gl.get_string(gl::VERSION));
+        let device_pixel_ratio = window.scale_factor() as f32;
+        println!("Device pixel ratio: {}", device_pixel_ratio);
 
-	// Make sure the gl context is made current.
-	webrender_surfman.make_gl_context_current().unwrap();
-	debug_assert_eq!(gl.get_error(), gleam::gl::NO_ERROR,);
+        // Make sure the gl context is made current.
+        webrender_surfman.make_gl_context_current().unwrap();
+        debug_assert_eq!(gl.get_error(), gleam::gl::NO_ERROR,);
 
         let webrender_opts = webrender::WebRenderOptions {
             clear_color: ColorF::new(1.0, 1.0, 1.0, 1.0),
             ..webrender::WebRenderOptions::default()
         };
 
-	let notifier = Box::new(Notifier::new(event_loop.create_proxy()));
+        let notifier = Box::new(Notifier::new(event_loop.create_proxy()));
         let (mut renderer, sender) =
             webrender::create_webrender_instance(gl.clone(), notifier, webrender_opts, None)
                 .unwrap();
@@ -140,12 +140,12 @@ impl Output {
         let epoch = Epoch(0);
         let pipeline_id = PipelineId(0, 0);
 
-	let mut api = sender.create_api();
-	let device_size = {
+        let mut api = sender.create_api();
+        let device_size = {
             let size = window.inner_size();
             DeviceIntSize::new(size.width as i32, size.height as i32)
         };
-	let document_id = api.add_document(device_size);
+        let document_id = api.add_document(device_size);
 
         let mut output = Self {
             output: wr_output::default(),
@@ -305,9 +305,9 @@ impl Output {
     }
 
     fn ensure_context_is_current(&mut self) {
-	// Make sure the gl context is made current.
+        // Make sure the gl context is made current.
         self.webrender_surfman.make_gl_context_current().unwrap();
-	debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR,);
+        debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR,);
     }
 
     pub fn flush(&mut self) {
@@ -320,9 +320,8 @@ impl Output {
             let mut txn = Transaction::new();
 
             txn.set_display_list(epoch, None, layout_size.to_f32(), builder.end());
-	    txn.set_root_pipeline(self.pipeline_id);
+            txn.set_root_pipeline(self.pipeline_id);
             txn.generate_frame(0, RenderReasons::NONE);
-
 
             self.display_list_builder = None;
 
@@ -332,13 +331,15 @@ impl Output {
 
             let device_size = self.get_deivce_size();
 
-	    // Bind the webrender framebuffer
-            let framebuffer_object = self.webrender_surfman
-		.context_surface_info()
-		.unwrap_or(None)
-		.map(|info| info.framebuffer_object)
-		.unwrap_or(0);
-            self.gl.bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
+            // Bind the webrender framebuffer
+            let framebuffer_object = self
+                .webrender_surfman
+                .context_surface_info()
+                .unwrap_or(None)
+                .map(|info| info.framebuffer_object)
+                .unwrap_or(0);
+            self.gl
+                .bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
 
             self.renderer.update();
 
@@ -352,7 +353,7 @@ impl Output {
             let image_key = self.copy_framebuffer_to_texture(DeviceIntRect::from_size(device_size));
             self.previous_frame_image = Some(image_key);
 
-	    // Perform the page flip. This will likely block for a while.
+            // Perform the page flip. This will likely block for a while.
             if let Err(err) = self.webrender_surfman.present() {
                 warn!("Failed to present surface: {:?}", err);
             }
@@ -365,6 +366,15 @@ impl Output {
 
     pub fn clear_display_list_builder(&mut self) {
         let _ = std::mem::replace(&mut self.display_list_builder, None);
+    }
+
+    pub fn add_font_instance_by_data(
+        &mut self,
+        data: FontData,
+        pixel_size: i32,
+    ) -> FontInstanceKey {
+        let font_key = self.add_font(data);
+        self.add_font_instance(font_key, pixel_size)
     }
 
     pub fn add_font_instance(&mut self, font_key: FontKey, pixel_size: i32) -> FontInstanceKey {
@@ -385,13 +395,13 @@ impl Output {
         font_instance_key
     }
 
-    pub fn add_font(&mut self, font_bytes: Rc<Vec<u8>>, font_index: u32) -> FontKey {
-        let mut txn = Transaction::new();
-
+    pub fn add_font(&mut self, data: FontData) -> FontKey {
         let font_key = self.render_api.generate_font_key();
-
-        txn.add_raw_font(font_key, font_bytes.to_vec(), font_index);
-
+        let mut txn = Transaction::new();
+        match data {
+            FontData::Raw(ref bytes, index) => txn.add_raw_font(font_key, bytes.clone(), index),
+            FontData::Native(native_font) => txn.add_native_font(font_key, native_font),
+        }
         self.render_api.send_transaction(self.document_id, txn);
 
         font_key
@@ -489,7 +499,8 @@ impl Output {
         self.render_api.send_transaction(self.document_id, txn);
 
         self.webrender_surfman
-            .resize(Size2D::new(size.width as i32, size.height as i32)).unwrap();
+            .resize(Size2D::new(size.width as i32, size.height as i32))
+            .unwrap();
     }
 }
 
@@ -561,10 +572,7 @@ impl RenderNotifier for Notifier {
         // let _ = self.events_proxy.send_event((1));
     }
 
-    fn new_frame_ready(&self,
-                       _: DocumentId,
-                       _scrolled: bool,
-                       composite_needed: bool) {
+    fn new_frame_ready(&self, _: DocumentId, _scrolled: bool, composite_needed: bool) {
         self.wake_up(composite_needed);
     }
 }

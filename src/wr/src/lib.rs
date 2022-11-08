@@ -93,6 +93,6 @@ pub use crate::wrterm::Fx_frame_edges;
 pub use crate::wrterm::Fwr_api_capture;
 pub use crate::wrterm::Fwr_api_stop_capture_sequence;
 
-#[no_mangle]
-pub extern "C" fn syms_of_ftfont() {
-}
+// #[no_mangle]
+// pub extern "C" fn syms_of_ftfont() {
+// }

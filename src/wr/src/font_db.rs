@@ -1,46 +1,69 @@
 use font_kit::{
     family_name::FamilyName,
+    properties::{Properties, Stretch, Style, Weight},
     source::{Source, SystemSource},
 };
 use fontdb::{FaceInfo, Family, Query};
 
 pub struct FontDB {
     pub db: fontdb::Database,
-
-    family_serif: Option<String>,
-    family_sans_serif: Option<String>,
-    family_cursive: Option<String>,
-    family_fantasy: Option<String>,
-    family_monospace: Option<String>,
 }
 
 impl FontDB {
     pub fn new() -> FontDB {
         let mut db = fontdb::Database::new();
+	#[cfg(any(target_os = "macos", target_os = "windows"))]
+	db.load_system_fonts();
+	#[cfg(any(target_os = "android", all(unix, not(target_os = "macos"))))]
+	{
+	    let source = SystemSource::new();
+            let font_handles = source.all_fonts().unwrap();
+            for handle in font_handles {
+		if let font_kit::handle::Handle::Path {
+                    ref path,
+                    font_index,
+		} = handle
+		{
+                    if let Err(e) = db.load_font_file(path) {
+			log::warn!("Failed to load '{}' cause {}.", path.display(), e);
+                    }
+		}
+            }
+	};
 
-        db.load_system_fonts();
 
-        FontDB {
-            db,
-
-            family_serif: Self::default_font_family(FamilyName::Serif),
-            family_sans_serif: Self::default_font_family(FamilyName::SansSerif),
-            family_cursive: Self::default_font_family(FamilyName::Cursive),
-            family_fantasy: Self::default_font_family(FamilyName::Fantasy),
-            family_monospace: Self::default_font_family(FamilyName::Monospace),
-        }
+        FontDB { db }
     }
 
-    pub fn select_family(&self, family: &Family) -> Vec<&FaceInfo> {
-        self.family_name(family)
-            .map(|family| {
-                self.db
-                    .faces()
-                    .iter()
-                    .filter(|f| f.family == family)
-                    .collect::<Vec<&FaceInfo>>()
-            })
-            .unwrap_or_else(|| Vec::new())
+    pub fn select_family(&self, family_name: &str) -> Vec<&FaceInfo> {
+        let family_name = match family_name {
+            "serif" => FamilyName::Serif,
+            "sans-serif" => FamilyName::SansSerif,
+            "monospace" => FamilyName::Monospace,
+            "cursive" => FamilyName::Cursive,
+            "fantasy" => FamilyName::Fantasy,
+            _ => FamilyName::Title(family_name.to_string()),
+        };
+
+        let mut family_names = Vec::new();
+        family_names.push(family_name.clone());
+        let properties = font_kit::properties::Properties::default();
+        let font = self.select_best_match(&family_names, &properties);
+        match font {
+            Some(font) => {
+                let postscript_name = font.postscript_name().unwrap_or("?".to_string());
+                self.family_name_in_cache(&postscript_name)
+                    .map(|family| {
+                        self.db
+                            .faces()
+                            .iter()
+                            .filter(|f| f.family == family)
+                            .collect::<Vec<&FaceInfo>>()
+                    })
+                    .unwrap_or_else(|| Vec::new())
+            }
+            _ => Vec::new(),
+        }
     }
 
     pub fn select_postscript(&self, postscript_name: &str) -> Option<&FaceInfo> {
@@ -55,12 +78,45 @@ impl FontDB {
         self.db.query(query).and_then(|id| self.db.face(id))
     }
 
+    pub fn select_best_match(
+        &self,
+        family_names: &[FamilyName],
+        properties: &Properties,
+    ) -> Option<font_kit::font::Font> {
+        let selection_result = SystemSource::new().select_best_match(family_names, &properties);
+        match selection_result {
+            Ok(handle) => {
+                let loading_result = handle.load();
+                match loading_result {
+                    Ok(font) => Some(font),
+                    Err(e) => {
+                        log::warn!("Failed to load {:?} cause {}.", family_names, e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                log::warn!("Failed to select {:?} cause {}.", family_names, e);
+                None
+            }
+        }
+    }
+
     pub fn all_fonts(&self) -> Vec<&FaceInfo> {
         self.db.faces().iter().collect::<Vec<&FaceInfo>>()
     }
 
     pub fn all_families(&self) -> Option<Vec<String>> {
-        SystemSource::new().all_families().ok()
+        match SystemSource::new().all_families().ok() {
+            Some(families_) => {
+                let mut families = vec![];
+                for family in families_ {
+                    families.push(family.replace('\'', "").trim().to_string());
+                }
+                Some(families)
+            }
+            _ => None,
+        }
     }
 
     fn default_font_family(default_font_family: FamilyName) -> Option<String> {
@@ -79,15 +135,13 @@ impl FontDB {
         Some(font.family_name())
     }
 
-    fn family_name<'a>(&'a self, family: &'a Family) -> Option<&'a str> {
-        use std::ops::Deref;
-        match family {
-            Family::Name(ref name) => Some(name),
-            Family::Serif => self.family_serif.as_ref().map(|t| t.deref()),
-            Family::SansSerif => self.family_sans_serif.as_ref().map(|t| t.deref()),
-            Family::Cursive => self.family_cursive.as_ref().map(|t| t.deref()),
-            Family::Fantasy => self.family_fantasy.as_ref().map(|t| t.deref()),
-            Family::Monospace => self.family_monospace.as_ref().map(|t| t.deref()),
+    fn family_name_in_cache<'a>(&'a self, postscript_name: &'a String) -> Option<&'a str> {
+        let face_info = self.select_postscript(postscript_name);
+
+        if let Some(info) = face_info {
+            Some(&info.family)
+        } else {
+            None
         }
     }
 }

@@ -114,6 +114,7 @@
 	       freetype
 	       harfbuzz
 	       wayland
+	       harfbuzz
 	       mesa
 	       libxkbcommon
 	       python
