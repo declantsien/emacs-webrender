@@ -272,6 +272,10 @@ impl Output {
         DisplayInfoRef::new(self.output.display_info as *mut _)
     }
 
+    pub fn device_pixel_ratio(&self) -> f32 {
+        self.window.scale_factor() as f32
+    }
+
     pub fn get_inner_size(&self) -> PhysicalSize<u32> {
         self.get_window().inner_size()
     }

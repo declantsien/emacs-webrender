@@ -242,6 +242,8 @@ pub struct WRFont<'a> {
     // extend basic font
     pub font: font,
 
+    pub device_pixel_ratio: f32,
+
     pub font_instance_key: FontInstanceKey,
 
     pub font_bytes: ManuallyDrop<Rc<Vec<u8>>>,
@@ -256,9 +258,10 @@ impl<'a> WRFont<'a> {
 
     pub fn get_glyph_advance_width(&self, glyph_indices: Vec<GlyphIndex>) -> Vec<Option<i32>> {
         let pixel_size = self.font.pixel_size;
+        let glyph_size = pixel_size as f32 * self.device_pixel_ratio;
         let units_per_em = self.face.units_per_em().unwrap();
 
-        let scale = pixel_size as f32 / units_per_em as f32;
+        let scale = glyph_size / units_per_em as f32;
 
         glyph_indices
             .into_iter()
@@ -288,6 +291,9 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
             15
         };
     }
+
+    let device_pixel_ratio = output.device_pixel_ratio();
+    let glyph_size = pixel_size as f32 * device_pixel_ratio;
 
     let font_object: LispFontLike = unsafe {
         font_make_object(
@@ -347,6 +353,8 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
             .as_font_mut() as *mut WRFont,
     );
 
+    wr_font.device_pixel_ratio = device_pixel_ratio;
+
     let (font_bytes, face_index) = FONT_DB
         .db
         .with_face_data(face_info.id, |font_data, face_index| {
@@ -358,7 +366,7 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     // Create font instance key in webrender.
     wr_font.font_instance_key = output.add_font_instance_by_data(
         FontData::Raw(font_bytes.to_vec(), face_index),
-        pixel_size as i32,
+        glyph_size as i32,
     );
 
     wr_font.font_bytes = ManuallyDrop::new(font_bytes.clone());
@@ -377,7 +385,7 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     let average_width = face.glyph_hor_advance(ttf_parser::GlyphId(0)).unwrap();
 
-    let scale = pixel_size as f32 / units_per_em as f32;
+    let scale = glyph_size / units_per_em as f32;
 
     wr_font.font.pixel_size = pixel_size as i32;
     wr_font.font.average_width = (average_width as f32 * scale) as i32;
