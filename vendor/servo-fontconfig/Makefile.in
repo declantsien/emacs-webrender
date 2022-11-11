@@ -1,0 +1,48 @@
+VPATH=%VPATH%
+
+CC ?= gcc
+CXX ?= g++
+CXXFLAGS ?=
+AR ?= ar
+RUSTC ?= rustc
+RUSTFLAGS ?=
+EXT_DEPS ?=
+RUSTDOC ?= rustdoc
+RUSTDOC_FLAGS ?=
+RUSTDOC_TARGET ?= doc
+
+ifeq ($(CFG_OSTYPE),linux-androideabi)
+RUSTFLAGS += -L./../../android/fontconfig/src/.libs
+else ifeq ($(CFG_OSTYPE),unknown-linux-gnu)
+RUSTFLAGS += -L./../../linux/fontconfig/src/.libs
+endif
+
+RUST_SRC=$(shell find $(VPATH)/src -type f -name '*.rs')
+
+.PHONY: all
+all:	libfontconfig-servo.dummy
+
+%.o:	%.c
+	$(CC) $< -o $@ -c $(CFLAGS)
+
+libfontconfig-servo.dummy: src/lib.rs $(RUST_SRC) $(EXT_DEPS)
+	$(RUSTC) $(RUSTFLAGS) $< --out-dir . -C extra-filename=-servo
+	touch $@
+
+fontconfig-test: src/lib.rs $(RUST_SRC)
+	$(RUSTC) $(RUSTFLAGS) $< -o $@ --test
+
+.PHONY: check
+check: fontconfig-test
+	./fontconfig-test
+
+.PHONY: doc
+doc: $(RUSTDOC_TARGET)/fontconfig/index.html
+
+$(RUSTDOC_TARGET)/fontconfig/index.html: src/lib.rs $(RUST_SRC) $(EXT_DEPS)
+	$(RUSTDOC) $(RUSTDOC_FLAGS) $< -o $(RUSTDOC_TARGET)
+
+.PHONY: clean
+clean:
+	rm -f *.o *.a *.so *.dylib *.rlib *.dll *.dummy *-test
+

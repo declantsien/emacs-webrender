@@ -338,3 +338,5 @@ lib-src/seccomp-filter-exec.pfc
 # Rust
 **/*/generated.rs
 /target/
+
+!vendor/**

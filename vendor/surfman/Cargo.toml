@@ -1,0 +1,91 @@
+[package]
+name = "surfman"
+license = "MIT / Apache-2.0"
+edition = "2018"
+version = "0.4.3"
+authors = [
+    "Patrick Walton <pcwalton@mimiga.net>",
+    "Emilio Cobos Álvarez <emilio@crisal.io>",
+    "The Servo Project Developers",
+]
+description = "A cross-platform, low-level toolkit for GPU surface management"
+repository = "https://github.com/servo/surfman"
+build = "build.rs"
+
+[build-dependencies]
+gl_generator = "0.14"
+cfg_aliases = "0.1.0"
+
+[features]
+default = ["sm-winit"]
+sm-angle = []
+sm-angle-builtin = ["mozangle"]
+sm-angle-default = ["sm-angle"]
+sm-no-wgl = ["sm-angle-default"]
+sm-test = []
+sm-wayland-default = []
+sm-winit = ["winit"]
+sm-x11 = ["x11"]
+sm-raw-window-handle = ["raw-window-handle"]
+
+[dependencies]
+bitflags = "1.1"
+lazy_static = "1"
+libc = "0.2"
+log = "0.4"
+parking_lot = "0.10.2"
+
+[dependencies.euclid]
+version = "0.22"
+features = []
+
+[dependencies.osmesa-sys]
+version = "0.1"
+optional = true
+
+[dependencies.winit]
+version = "0.27.5"
+optional = true
+
+[dependencies.raw-window-handle]
+version = "0.5.0"
+optional = true
+
+[dev-dependencies]
+clap = "2"
+gl = "0.14"
+png = "0.15"
+rand = "0.7"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+cgl = "0.3.2"
+cocoa = "0.19"
+core-foundation = "0.6"
+core-graphics = "0.17"
+display-link = "0.2"
+io-surface = "0.12"
+mach = "0.3"
+metal = "0.18"
+objc = "0.2"
+
+[target.'cfg(all(unix, not(any(target_os = "macos", target_os = "android"))))'.dependencies.wayland-sys]
+version = "0.24"
+features = ["client", "dlopen", "egl"]
+
+[target.'cfg(all(unix, not(any(target_os = "macos", target_os = "android"))))'.dependencies.x11]
+version = "2.3.0"
+features = ["xlib"]
+optional = true
+
+# Ensure that we have a static libEGL.lib present for linking with EGL bindings.
+[target.'cfg(target_os = "windows")'.dependencies.mozangle]
+version = "0.3"
+features = ["egl", "build_dlls"]
+optional = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+wio = "0.2"
+winapi = { version = "0.3", features = ["d3d11", "wingdi", "winuser", "libloaderapi"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+"raw-window-handle" = "0.3.3"

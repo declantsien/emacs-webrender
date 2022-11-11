@@ -1,0 +1,24 @@
+[package]
+name = "webrender_surfman"
+version = "0.0.1"
+authors = ["The Servo Project Developers"]
+license = "MPL-2.0"
+edition = "2018"
+publish = false
+
+[lib]
+name = "webrender_surfman"
+path = "lib.rs"
+
+[dependencies]
+euclid = "0.22"
+# surfman = "0.4"
+# surfman-chains = "0.6"
+
+[dependencies.surfman]
+git = "https://github.com/declantsien/surfman.git"
+rev = "682fc7f787432de7b289e4caf4d8e248f85268c9"
+
+[dependencies.surfman-chains]
+git = "https://github.com/declantsien/surfman-chains.git"
+rev = "df8d9ed04f516873f8e6ad7446a233238d783694"

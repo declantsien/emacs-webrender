@@ -1,0 +1,100 @@
+FLAGS := ""
+
+# On MSVC, no -FPIC
+ifeq (,$(findstring windows-msvc,$(TARGET)))
+  FLAGS += -fPIC
+endif
+
+ifeq (armv7-linux-androideabi,$(TARGET))
+	# Reset TARGET variable because armv7 target name used by Rust is not 
+	# the same as the target name needed for the CXX toolchain.
+	TARGET = arm-linux-androideabi
+	FLAGS += -march=armv7-a -mfpu=neon --target=$(TARGET)
+endif
+
+ifneq ($(HOST),$(TARGET))
+  CXX ?= $(TARGET)-g++
+  CC ?= $(TARGET)-gcc
+  AR ?= $(TARGET)-ar
+else
+  CXX ?= g++
+  CC ?= gcc
+  AR ?= ar
+endif
+
+
+CONFIGURE_FLAGS := \
+    --host=$(TARGET)
+
+ifeq (android,$(findstring android,$(TARGET)))
+    CONFIGURE_FLAGS += \
+        --with-default-fonts=/system/fonts \
+        --with-cache-dir=/sdcard/servo/.fccache \
+        $(NULL)
+endif
+
+# Fix up OUT_DIR paths on Windows
+ifeq (windows,$(findstring windows,$(TARGET)))
+OUT_DIR := $(shell cygpath "$(OUT_DIR)")
+endif
+
+
+CFLAGS += $(FLAGS)
+CXXFLAGS += $(FLAGS)
+
+ifneq (android,$(findstring android,$(TARGET)))
+
+CONFIGURE_FLAGS += \
+    --sysconfdir=/etc \
+    --localstatedir=/var \
+    $(NULL)
+
+endif
+
+ifneq (darwin,$(findstring darwin,$(TARGET)))
+
+SRC_DIR = $(shell pwd)
+
+all: $(OUT_DIR)/libfontconfig.a
+
+$(OUT_DIR)/libfontconfig.a: $(OUT_DIR)/Makefile
+	cd $(OUT_DIR) && make -j$(NUM_JOBS)
+	cp $(OUT_DIR)/src/.libs/libfontconfig.a $(OUT_DIR)
+
+EXPAT_INCLUDE_DIR ?= $(DEP_EXPAT_OUTDIR)/include
+EXPAT_LIB_DIR ?= $(DEP_EXPAT_OUTDIR)/lib
+
+ifneq ($(HOST),$(TARGET))
+
+EXPAT_FLAGS = --with-expat-includes="$(EXPAT_INCLUDE_DIR)" \
+              --with-expat-lib="$(EXPAT_LIB_DIR)"
+FREETYPE_CFLAGS ?= -I$(DEP_FREETYPE_OUTDIR)/include/freetype2
+FREETYPE_LIBS ?= -L$(DEP_FREETYPE_OUTDIR)/lib -lfreetype
+
+else
+
+EXPAT_FLAGS =
+FREETYPE_CFLAGS =
+FREETYPE_LIBS =
+
+endif
+
+$(OUT_DIR)/Makefile:
+	cd $(OUT_DIR) && \
+		CC="$(CC)" \
+		AR="$(AR)" \
+		FREETYPE_CFLAGS="$(FREETYPE_CFLAGS)" \
+		FREETYPE_LIBS="$(FREETYPE_LIBS)" \
+		CFLAGS="$(CFLAGS)" \
+		$(SRC_DIR)/configure \
+		--disable-docs \
+		--disable-shared \
+		$(EXPAT_FLAGS) \
+		$(strip $(CONFIGURE_FLAGS)) && \
+		touch $(SRC_DIR)/src/fcobjshash.h
+
+else
+
+all:
+
+endif
