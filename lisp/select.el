@@ -233,7 +233,7 @@ decoded.  If `gui-get-selection' signals an error, return nil."
                (eq type 'CLIPBOARD)
                ;; Should we unify this with gui--clipboard-selection-unchanged-p?
                (gui-backend-selection-owner-p type))
-    (let ((request-type (if (memq window-system '(x pgtk haiku))
+    (let ((request-type (if (memq window-system '(x pgtk haiku wr))
                             (or x-select-request-type
                                 '(UTF8_STRING COMPOUND_TEXT STRING text/plain\;charset=utf-8))
                           'STRING))
@@ -525,6 +525,8 @@ buffers."
               ((featurep 'pgtk) (add-hook 'pgtk-lost-selection-functions
                                           #'lost-selection-function))
               ((featurep 'haiku) (add-hook 'haiku-lost-selection-functions
+                                           #'lost-selection-function))
+              ((featurep 'wr) (add-hook 'wr-lost-selection-functions
                                            #'lost-selection-function)))
         (add-hook 'post-select-region-hook
                   #'lost-selection-post-select-region-function))
@@ -533,7 +535,9 @@ buffers."
           ((featurep 'pgtk) (remove-hook 'pgtk-lost-selection-functions
                                          #'lost-selection-function))
           ((featurep 'haiku) (remove-hook 'haiku-lost-selection-functions
-                                          #'lost-selection-function)))
+                                          #'lost-selection-function))
+          ((featurep 'wr) (remove-hook 'wr-lost-selection-functions
+                                         #'lost-selection-function)))
     (remove-hook 'post-select-region-hook
                  #'lost-selection-post-select-region-function)
     (setq lost-selection-last-region-buffer nil)))

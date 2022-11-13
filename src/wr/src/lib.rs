@@ -71,7 +71,7 @@ pub use crate::wrterm::frame_set_mouse_pixel_position;
 pub use crate::wrterm::image_sync_to_pixmaps;
 pub use crate::wrterm::image_pixmap_draw_cross;
 pub use crate::wrterm::Fx_hide_tip;
-pub use crate::wrterm::Fx_create_frame;
+pub use crate::wrterm::Fwr_create_frame;
 pub use crate::wrterm::Fx_open_connection;
 pub use crate::wrterm::Fxw_display_color_p;
 pub use crate::wrterm::Fx_display_grayscale_p;

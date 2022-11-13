@@ -903,6 +903,9 @@ If ARGS are omitted, the default is to pass
                 ;; (setenv "WAYLAND_DISPLAY" dpy)
                 )
             (setenv "DISPLAY" dpy)))
+         ((featurep 'wr)
+          (warn "TODO: browse-url wr display?")
+          (setenv "DISPLAY" dpy))
          (t
           (setenv "DISPLAY" dpy)))))
     (if (functionp function)
@@ -1018,6 +1021,7 @@ This is either the value of variable `browse-url-browser-display' if
 non-nil, or the same display as Emacs if different from the current
 environment, otherwise just use the current environment."
   (let ((display (or browse-url-browser-display (browse-url-emacs-display))))
+    (and (featurep 'wr-win) (warn "DISPLAY envs may not working under wr"))
     (if display
 	(cons (concat (if (and (eq window-system 'pgtk)
                                (equal (pgtk-backend-display-class)

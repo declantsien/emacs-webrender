@@ -10384,7 +10384,7 @@ call `normal-erase-is-backspace-mode' (which see) instead."
        (if (if (eq normal-erase-is-backspace 'maybe)
                (and (not noninteractive)
                     (or (memq system-type '(ms-dos windows-nt))
-			(memq window-system '(w32 ns pgtk))
+			(memq window-system '(w32 ns pgtk wr))
                         (and (eq window-system 'x)
                              (fboundp 'x-backspace-delete-keys-p)
                              (x-backspace-delete-keys-p))

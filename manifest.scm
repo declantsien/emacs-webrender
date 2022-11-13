@@ -8,6 +8,7 @@
 	      "gnupg"
 
 	      "emacs-rustic"
+	      "emacs-realgud"
 
 	      "rust@nightly-2022-10-24:rust-docs"
 	      "rust@nightly-2022-10-24:rust-docs-json-preview"

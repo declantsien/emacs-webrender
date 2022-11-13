@@ -234,7 +234,7 @@ pub fn x_hide_tip() -> bool {
 ///
 /// This function is an internal primitive--use `make-frame' instead.
 #[lisp_fn]
-pub fn x_create_frame(parms: LispObject) -> LispFrameRef {
+pub fn wr_create_frame(parms: LispObject) -> LispFrameRef {
     // x_get_arg modifies parms.
     let parms = unsafe { Fcopy_alist(parms) };
 
@@ -931,7 +931,7 @@ fn syms_of_wrfont() {
 
 export_lisp_fns! {
     x_hide_tip,
-    x_create_frame,
+    wr_create_frame,
     x_open_connection,
     xw_display_color_p,
     x_display_grayscale_p,

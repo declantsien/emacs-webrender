@@ -68,8 +68,9 @@
 
 (eval-when-compile (require 'cl-lib))
 
-(if (not (fboundp 'x-create-frame))
+(if (not (fboundp 'wr-create-frame))
     (error "%s: Loading wr-win.el but not compiled for Webrender" invocation-name))
+(defalias 'x-create-frame 'wr-create-frame)
 
 (require 'term/common-win)
 (require 'frame)
@@ -78,92 +79,8 @@
 (require 'select)
 (require 'menu-bar)
 (require 'fontset)
-(require 'x-dnd)
 
-(defvar x-invocation-args)
 (defvar wr-keysym-table)
-(defvar x-selection-timeout)
-(defvar x-session-id)
-(defvar x-session-previous-id)
-
-(defun x-handle-no-bitmap-icon (_switch)
-  (setq default-frame-alist (cons '(icon-type) default-frame-alist)))
-
-;; Handle the --parent-id option.
-(defun x-handle-parent-id (switch)
-  (or (consp x-invocation-args)
-      (error "%s: missing argument to `%s' option" invocation-name switch))
-  (setq initial-frame-alist (cons
-                             (cons 'parent-id
-                                   (string-to-number (car x-invocation-args)))
-                             initial-frame-alist)
-        x-invocation-args (cdr x-invocation-args)))
-
-;; Handle the --smid switch.  This is used by the session manager
-;; to give us back our session id we had on the previous run.
-(defun x-handle-smid (switch)
-  (or (consp x-invocation-args)
-      (error "%s: missing argument to `%s' option" invocation-name switch))
-  (setq x-session-previous-id (car x-invocation-args)
-	x-invocation-args (cdr x-invocation-args)))
-
-(defvar emacs-save-session-functions nil
-  "Special hook run when a save-session event occurs.
-The functions do not get any argument.
-Functions can return non-nil to inform the session manager that the
-window system shutdown should be aborted.
-
-See also `emacs-session-save'.")
-
-(defun emacs-session-filename (session-id)
-  "Construct a filename to save the session in based on SESSION-ID.
-Return a filename in `user-emacs-directory', unless the session file
-already exists in the home directory."
-  (let ((basename (concat "session." session-id)))
-    (locate-user-emacs-file basename
-                            (concat ".emacs-" basename))))
-
-(defun emacs-session-save ()
-  "This function is called when the window system is shutting down.
-If this function returns non-nil, the window system shutdown is canceled.
-
-When a session manager tells Emacs that the window system is shutting
-down, this function is called.  It calls the functions in the hook
-`emacs-save-session-functions'.  Functions are called with the current
-buffer set to a temporary buffer.  Functions should use `insert' to insert
-Lisp code to save the session state.  The buffer is saved in a file in the
-home directory of the user running Emacs.  The file is evaluated when
-Emacs is restarted by the session manager.
-
-If any of the functions returns non-nil, no more functions are called
-and this function returns non-nil.  This will inform the session manager
-that it should abort the window system shutdown."
-  (let ((filename (emacs-session-filename x-session-id))
-	(buf (get-buffer-create (concat " *SES " x-session-id))))
-    (when (file-exists-p filename)
-      (delete-file filename))
-    (with-current-buffer buf
-      (let ((cancel-shutdown (condition-case nil
-				 ;; A return of t means cancel the shutdown.
-				 (run-hook-with-args-until-success
-				  'emacs-save-session-functions)
-			       (error t))))
-	(unless cancel-shutdown
-	  (write-file filename))
-	(kill-buffer buf)
-	cancel-shutdown))))
-
-(defun emacs-session-restore (previous-session-id)
-  "Restore the Emacs session if started by a session manager.
-The file saved by `emacs-session-save' is evaluated and deleted if it
-exists."
-  (let ((filename (emacs-session-filename previous-session-id)))
-    (when (file-exists-p filename)
-      (load-file filename)
-      (delete-file filename)
-      (message "Restored session data"))))
-
-
 
 
 ;;
@@ -1213,7 +1130,7 @@ This returns an error if any Emacs frames are X frames."
   (if (memq 'x (mapcar #'window-system (frame-list)))
       (error "Cannot suspend Emacs while an X GUI frame exists")))
 
-(defvar x-initialized nil
+(defvar wr-initialized nil
   "Non-nil if the X window system has been initialized.")
 
 (declare-function x-open-connection "xfns.c"
@@ -1229,17 +1146,8 @@ This returns an error if any Emacs frames are X frames."
 (cl-defmethod window-system-initialization (&context (window-system wr)
                                             &optional display)
   "Initialize Emacs for X frames and open the first connection to an X server."
-  (cl-assert (not x-initialized))
-
-  ;; Make sure we have a valid resource name.
-  (or (stringp x-resource-name)
-      (let (i)
-	(setq x-resource-name (copy-sequence invocation-name))
-
-	;; Change any . or * characters in x-resource-name to hyphens,
-	;; so as not to choke when we use it in X resource queries.
-	(while (setq i (string-match "[.*]" x-resource-name))
-	  (aset x-resource-name i ?-))))
+  (cl-assert (not wr-initialized))
+  (message "window-system-initialization `%s'" initial-window-system)
 
   (x-open-connection (or display
 			 (setq x-display-name (or (getenv "DISPLAY" (selected-frame))
@@ -1247,7 +1155,7 @@ This returns an error if any Emacs frames are X frames."
 		     x-command-line-resources
 		     ;; Exit Emacs with fatal error if this fails and we
 		     ;; are the initial display.
-		     (eq initial-window-system 'x))
+		     (eq initial-window-system 'wr))
 
   ;; Create the default fontset.
   (create-default-fontset)
@@ -1303,14 +1211,6 @@ This returns an error if any Emacs frames are X frames."
 	  (setq default-frame-alist
 		(cons '(reverse . t) default-frame-alist)))))
 
-  ;; Set x-selection-timeout, measured in milliseconds.
-  (let ((res-selection-timeout (x-get-resource "selectionTimeout"
-					       "SelectionTimeout")))
-    (setq x-selection-timeout
-	  (if res-selection-timeout
-	      (string-to-number res-selection-timeout)
-	    5000)))
-
   ;; Don't let Emacs suspend under X.
   (add-hook 'suspend-hook 'x-win-suspend-error)
 
@@ -1342,7 +1242,7 @@ This returns an error if any Emacs frames are X frames."
   ;; 	    nil))
 
   (x-apply-session-resources)
-  (setq x-initialized t))
+  (setq wr-initialized t))
 
 (declare-function x-own-selection-internal "xselect.c"
 		  (selection value &optional frame))
@@ -1380,144 +1280,12 @@ This returns an error if any Emacs frames are X frames."
                                          &optional time-stamp terminal)
   (x-get-selection-internal selection-symbol target-type time-stamp terminal))
 
+
 ;; Initiate drag and drop
-(add-hook 'after-make-frame-functions 'x-dnd-init-frame)
-(define-key special-event-map [drag-n-drop] 'x-dnd-handle-drag-n-drop-event)
+;; TODO
 
-(defcustom x-gtk-stock-map
-  (mapcar (lambda (arg)
-	    (cons (purecopy (car arg)) (purecopy (cdr arg))))
-  '(
-    ("etc/images/new" . ("document-new" "gtk-new"))
-    ("etc/images/open" . ("document-open" "gtk-open"))
-    ("etc/images/diropen" . "n:system-file-manager")
-    ("etc/images/close" . ("window-close" "gtk-close"))
-    ("etc/images/save" . ("document-save" "gtk-save"))
-    ("etc/images/saveas" . ("document-save-as" "gtk-save-as"))
-    ("etc/images/undo" . ("edit-undo" "gtk-undo"))
-    ("etc/images/cut" . ("edit-cut" "gtk-cut"))
-    ("etc/images/copy" . ("edit-copy" "gtk-copy"))
-    ("etc/images/paste" . ("edit-paste" "gtk-paste"))
-    ("etc/images/search" . ("edit-find" "gtk-find"))
-    ("etc/images/print" . ("document-print" "gtk-print"))
-    ("etc/images/preferences" . ("preferences-system" "gtk-preferences"))
-    ("etc/images/help" . ("help-browser" "gtk-help"))
-    ("etc/images/left-arrow" . ("go-previous" "gtk-go-back"))
-    ("etc/images/right-arrow" . ("go-next" "gtk-go-forward"))
-    ("etc/images/home" . ("go-home" "gtk-home"))
-    ("etc/images/jump-to" . ("go-jump" "gtk-jump-to"))
-    ("etc/images/index" . ("gtk-search" "gtk-index"))
-    ("etc/images/exit" . ("application-exit" "gtk-quit"))
-    ("etc/images/cancel" . "gtk-cancel")
-    ("etc/images/info" . ("dialog-information" "gtk-info"))
-    ("etc/images/bookmark_add" . "n:bookmark_add")
-    ;; Used in Gnus and/or MH-E:
-    ("etc/images/attach" . ("mail-attachment" "gtk-attach"))
-    ("etc/images/connect" . "gtk-connect")
-    ("etc/images/contact" . "gtk-contact")
-    ("etc/images/delete" . ("edit-delete" "gtk-delete"))
-    ("etc/images/describe" . ("document-properties" "gtk-properties"))
-    ("etc/images/disconnect" . "gtk-disconnect")
-    ;; ("etc/images/exit" . "gtk-exit")
-    ("etc/images/lock-broken" . "gtk-lock_broken")
-    ("etc/images/lock-ok" . "gtk-lock_ok")
-    ("etc/images/lock" . "gtk-lock")
-    ("etc/images/next-page" . "gtk-next-page")
-    ("etc/images/refresh" . ("view-refresh" "gtk-refresh"))
-    ("etc/images/search-replace" . "edit-find-replace")
-    ("etc/images/sort-ascending" . ("view-sort-ascending" "gtk-sort-ascending"))
-    ("etc/images/sort-column-ascending" . "gtk-sort-column-ascending")
-    ("etc/images/sort-criteria" . "gtk-sort-criteria")
-    ("etc/images/sort-descending" . ("view-sort-descending"
-				     "gtk-sort-descending"))
-    ("etc/images/sort-row-ascending" . "gtk-sort-row-ascending")
-    ("etc/images/spell" . ("tools-check-spelling" "gtk-spell-check"))
-    ("images/gnus/toggle-subscription" . "gtk-task-recurring")
-    ("images/mail/compose" . ("mail-message-new" "gtk-mail-compose"))
-    ("images/mail/copy" . "gtk-mail-copy")
-    ("images/mail/forward" . "gtk-mail-forward")
-    ("images/mail/inbox" . "gtk-inbox")
-    ("images/mail/move" . "gtk-mail-move")
-    ("images/mail/not-spam" . "gtk-not-spam")
-    ("images/mail/outbox" . "gtk-outbox")
-    ("images/mail/reply-all" . "gtk-mail-reply-to-all")
-    ("images/mail/reply" . "gtk-mail-reply")
-    ("images/mail/save-draft" . "gtk-mail-handling")
-    ("images/mail/send" . ("mail-send" "gtk-mail-send"))
-    ("images/mail/spam" . "gtk-spam")
-    ;; Used for GDB Graphical Interface
-    ("images/gud/break" . "gtk-no")
-    ("images/gud/recstart" . ("media-record" "gtk-media-record"))
-    ("images/gud/recstop" . ("media-playback-stop" "gtk-media-stop"))
-    ;; No themed versions available:
-    ;; mail/preview (combining stock_mail and stock_zoom)
-    ;; mail/save    (combining stock_mail, stock_save and stock_convert)
-    ))
-  "How icons for tool bars are mapped to Gtk+ stock items.
-Emacs must be compiled with the Gtk+ toolkit for this to have any effect.
-A value that begins with n: denotes a named icon instead of a stock icon."
-  :version "22.2"
-  :type '(choice (repeat
-		  (choice symbol
-			  (cons (string :tag "Emacs icon")
-				(choice (group (string :tag "Named")
-					       (string :tag "Stock"))
-					(string :tag "Stock/named"))))))
-  :group 'x)
-
-(defcustom icon-map-list '(x-gtk-stock-map)
-  "A list of alists that map icon file names to stock/named icons.
-The alists are searched in the order they appear.  The first match is used.
-The keys in the alists are file names without extension and with two directory
-components.  For example, to map /usr/share/emacs/22.1.1/etc/images/open.xpm
-to stock item gtk-open, use:
-
-  (\"etc/images/open\" . \"gtk-open\")
-
-Themes also have named icons.  To map to one of those, use n: before the name:
-
-  (\"etc/images/diropen\" . \"n:system-file-manager\")
-
-The list elements are either the symbol name for the alist or the
-alist itself.
-
-If you don't want stock icons, set the variable to nil."
-  :version "22.2"
-  :type '(choice (const :tag "Don't use stock icons" nil)
-		 (repeat (choice symbol
-				 (cons (string :tag "Emacs icon")
-				       (string :tag "Stock/named")))))
-  :group 'x)
-
-(defconst x-gtk-stock-cache (make-hash-table :weakness t :test 'equal))
-
-(defun x-gtk-map-stock (file)
-  "Map icon with file name FILE to a Gtk+ stock name.
-This uses `icon-map-list' to map icon file names to stock icon names."
-  (when (stringp file)
-    (or (gethash file x-gtk-stock-cache)
-	(puthash
-	 file
-	 (save-match-data
-	   (let* ((file-sans (file-name-sans-extension file))
-		  (key (and (string-match "/\\([^/]+/[^/]+/[^/]+$\\)"
-					  file-sans)
-			    (match-string 1 file-sans)))
-		  (icon-map icon-map-list)
-		  elem value)
-	     (while (and (null value) icon-map)
-	       (setq elem (car icon-map)
-		     value (assoc-string (or key file-sans)
-					 (if (symbolp elem)
-					     (symbol-value elem)
-					   elem))
-		     icon-map (cdr icon-map)))
-	     (and value (cdr value))))
-	 x-gtk-stock-cache))))
-
-(global-set-key [XF86WakeUp] 'ignore)
-
+
 (provide 'wr-win)
 (provide 'term/wr-win)
 
-;;; x-win.el ends here
+;;; wr-win.el ends here

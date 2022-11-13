@@ -56,6 +56,7 @@
 	    ('x "X11")
 	    ('ns "OpenStep")
             ('pgtk "PureGTK")
+            ('wr "WebRender")
 	    ('tty "TTY")
 	    (_ nil)))))
 
