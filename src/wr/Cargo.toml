@@ -34,25 +34,19 @@ winit = "0.27.5"
 git = "https://github.com/servo/webrender.git"
 rev = "da3fba3c4751c0bf4098309ecb4329110b062146"
 default-features = false
-# features = ["capture", "serialize_program", "sw_compositor"]
-features = ["capture", "serialize_program"]
 
 [dependencies.webrender_surfman]
 git = "https://github.com/declantsien/webrender_surfman.git"
 rev = "6d5c67923d85f12d3bf0f5e4fbee159772d49572"
-# path = "/home/declan/src/webrender_surfman"
 
 [dependencies.surfman]
 git = "https://github.com/declantsien/surfman.git"
 rev = "682fc7f787432de7b289e4caf4d8e248f85268c9"
-# path = "/home/declan/src/surfman/surfman"
 
 [dependencies.fontdb]
 version = "0.10.0"
 default-features = false # do not include the default features, and optionally
                          # cherry-pick individual features
-
-# path = "/shared/src/fontdb"
 features = ["fs", "memmap", "fontconfig"]
 
 
@@ -67,4 +61,5 @@ core-foundation = "0.9.2"
 default = ["wayland", "x11"]
 x11 = ["copypasta/x11"]
 wayland = ["copypasta/wayland"]
-capture=["webrender/capture", "webrender/serialize_program", "webrender/sw_compositor"]
+capture=["webrender/capture", "webrender/serialize_program"]
+sw_compositor=["webrender/sw_compositor"]

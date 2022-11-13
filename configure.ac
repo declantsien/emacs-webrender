@@ -480,6 +480,7 @@ On by default on macOS.])],[],[with_ns=maybe])
 OPTION_DEFAULT_OFF([w32], [use native MS Windows GUI in a Cygwin build])
 OPTION_DEFAULT_OFF([pgtk], [use GTK to support window systems other than X])
 OPTION_DEFAULT_OFF([wr], [use WebRender to support window systems])
+OPTION_DEFAULT_OFF([wr-capture], [enable WebRender capture infrastructure])
 
 OPTION_DEFAULT_ON([gpm],[don't use -lgpm for mouse support on a GNU/Linux console])
 OPTION_DEFAULT_ON([dbus],[don't compile with D-Bus support])
@@ -3117,12 +3118,17 @@ AC_SUBST(CARGO_FLAGS)
 
 WR_OBJ=
 WR_LIBS=
+WR_CARGO_FEATURES=
 LIBWRTERM_ARCHIVE=
 if test "${HAVE_WR}" = "yes"; then
   case $opsys in
     gnu-linux|darwin) LIBWRTERM_ARCHIVE=libwrterm.a ;;
     *) LIBWRTERM_ARCHIVE=libwrterm.lib ;;
   esac
+
+  if test "${with_wr_capture}" = "yes"; then
+    WR_CARGO_FEATURES="capture"
+  fi
 
   WR_OBJ="wrterm.o wrfns.o"
 
@@ -3138,6 +3144,7 @@ fi
 AC_SUBST(WR_OBJ)
 AC_SUBST(WR_LIBS)
 AC_SUBST(LIBWRTERM_ARCHIVE)
+AC_SUBST(WR_CARGO_FEATURES)
 
 AC_CHECK_FUNCS([malloc_trim])
 

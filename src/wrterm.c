@@ -3,13 +3,6 @@
 #include "term.h"
 #include "lisp.h"
 
-/* void */
-/* syms_of_wrterm (void) */
-/* { */
-
-
-/* } */
-
 /* pub extern "C" fn wr_init_syms() { */
 /*     #[cfg(feature = "capture")] */
 /*     { */

@@ -876,7 +876,7 @@ pub fn wr_api_capture(path: LispStringRef, bits_raw: LispObject, start_sequence:
             }
         };
         let bits_raw = unsafe {
-            emacs::bindings::check_integer_range(
+            lisp_types::bindings::check_integer_range(
                 bits_raw,
                 webrender::CaptureBits::SCENE.bits() as i64,
                 webrender::CaptureBits::all().bits() as i64,
