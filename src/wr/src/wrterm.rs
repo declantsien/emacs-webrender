@@ -16,7 +16,7 @@ use crate::frame::frame_edges;
 use crate::frame::LispFrameExt;
 use crate::{
     color::lookup_color_by_name_or_hex,
-    font::{FontRef, FONT_DRIVER},
+    font::{FontRef, FONT_DRIVER, default_monospace_family_name},
     frame::create_frame,
     input::winit_keycode_emacs_key_name,
     output::OutputRef,
@@ -318,6 +318,8 @@ pub fn wr_create_frame(parms: LispObject) -> LispFrameRef {
 
     let mut frame = create_frame(display, dpyinfo, tem, kb.into());
 
+    println!("default font: {:?}", default_monospace_family_name());
+
     unsafe {
         register_font_driver(&FONT_DRIVER.0 as *const _, frame.as_mut());
     };
@@ -334,7 +336,7 @@ pub fn wr_create_frame(parms: LispObject) -> LispFrameRef {
     frame.gui_default_parameter(
         parms,
         Qfont,
-        "Monospace".into(),
+        default_monospace_family_name().into(),
         "font",
         "Font",
         RES_TYPE_STRING,

@@ -118,6 +118,10 @@ impl From<LispObject> for LispFontLike {
     }
 }
 
+pub fn default_monospace_family_name() -> &'static str {
+    FONT_DB.normalize_family_name("monospace").unwrap()
+}
+
 extern "C" fn get_cache(f: *mut frame) -> LispObject {
     let frame = LispFrameRef::new(f);
     let mut dpyinfo = frame.wr_display_info();
@@ -323,14 +327,8 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
         let slant = font_entity.get_slant().unwrap();
 
-        let family = match family.as_ref() {
-            "Serif" => Family::Serif,
-            "Sans Serif" => Family::SansSerif,
-            "Monospace" => Family::Monospace,
-            "Cursive" => Family::Cursive,
-            "Fantasy" => Family::Fantasy,
-            f => Family::Name(f),
-        };
+        let family = FONT_DB.normalize_family_name(family.as_str()).unwrap();
+	let family = Family::Name(family);
 
         FONT_DB
             .query(&Query {

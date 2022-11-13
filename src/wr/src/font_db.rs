@@ -36,34 +36,15 @@ impl FontDB {
     }
 
     pub fn select_family(&self, family_name: &str) -> Vec<&FaceInfo> {
-        let family_name = match family_name {
-            "serif" => FamilyName::Serif,
-            "sans-serif" => FamilyName::SansSerif,
-            "monospace" => FamilyName::Monospace,
-            "cursive" => FamilyName::Cursive,
-            "fantasy" => FamilyName::Fantasy,
-            _ => FamilyName::Title(family_name.to_string()),
-        };
-
-        let mut family_names = Vec::new();
-        family_names.push(family_name.clone());
-        let properties = font_kit::properties::Properties::default();
-        let font = self.select_best_match(&family_names, &properties);
-        match font {
-            Some(font) => {
-                let postscript_name = font.postscript_name().unwrap_or("?".to_string());
-                self.family_name_in_cache(&postscript_name)
-                    .map(|family| {
-                        self.db
-                            .faces()
-                            .iter()
-                            .filter(|f| f.family == family)
-                            .collect::<Vec<&FaceInfo>>()
-                    })
-                    .unwrap_or_else(|| Vec::new())
-            }
-            _ => Vec::new(),
-        }
+	self.normalize_family_name(family_name)
+	    .map(|family| {
+                self.db
+                    .faces()
+                    .iter()
+                    .filter(|f| f.family == family)
+                    .collect::<Vec<&FaceInfo>>()
+            })
+            .unwrap_or_else(|| Vec::new())
     }
 
     pub fn select_postscript(&self, postscript_name: &str) -> Option<&FaceInfo> {
@@ -135,13 +116,37 @@ impl FontDB {
         Some(font.family_name())
     }
 
-    fn family_name_in_cache<'a>(&'a self, postscript_name: &'a String) -> Option<&'a str> {
-        let face_info = self.select_postscript(postscript_name);
+    pub fn normalize_family_name<'a>(&'a self, family_name: &'a str) -> Option<&'a str> {
+        let family_name = match family_name.clone().to_lowercase().as_str() {
+            "serif" => FamilyName::Serif,
+            "sans-serif" => FamilyName::SansSerif,
+	    "sans serif" => FamilyName::SansSerif,
+            "monospace" => FamilyName::Monospace,
+            "cursive" => FamilyName::Cursive,
+            "fantasy" => FamilyName::Fantasy,
+            _ => FamilyName::Title(family_name.to_string()),
+        };
 
-        if let Some(info) = face_info {
-            Some(&info.family)
+        let mut family_names = Vec::new();
+        family_names.push(family_name.clone());
+        let properties = font_kit::properties::Properties::default();
+        let font = self.select_best_match(&family_names, &properties);
+        let face_info = if let Some(font) = font {
+	    // println!("fc font name: {:?}", font.family_name());
+            let postscript_name = font.postscript_name().unwrap_or("?".to_string());
+	    // println!("fc postscript_name: {:?}", postscript_name);
+	    self.select_postscript(postscript_name.as_str())
         } else {
             None
-        }
+        };
+
+	let family_name = if let Some(info) = face_info {
+	    // println!("ttf-parser font family: {:?}", info.family);
+            Some(info.family.as_str())
+        } else {
+            None
+        };
+
+	family_name
     }
 }
