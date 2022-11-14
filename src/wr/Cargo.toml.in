@@ -42,6 +42,7 @@ rev = "6d5c67923d85f12d3bf0f5e4fbee159772d49572"
 [dependencies.surfman]
 git = "https://github.com/declantsien/surfman.git"
 rev = "682fc7f787432de7b289e4caf4d8e248f85268c9"
+# features = ["sm-winit", "sm-x11"]
 
 [dependencies.fontdb]
 version = "0.10.0"
@@ -58,8 +59,8 @@ cbindgen = "0.24.3"
 core-foundation = "0.9.2"
 
 [features]
-default = ["wayland", "x11"]
-x11 = ["copypasta/x11"]
+default = ["wayland", @WR_CARGO_FEATURES@]
+x11 = ["copypasta/x11", "surfman/sm-x11"]
 wayland = ["copypasta/wayland"]
 capture=["webrender/capture", "webrender/serialize_program"]
 sw_compositor=["webrender/sw_compositor"]

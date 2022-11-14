@@ -480,7 +480,6 @@ On by default on macOS.])],[],[with_ns=maybe])
 OPTION_DEFAULT_OFF([w32], [use native MS Windows GUI in a Cygwin build])
 OPTION_DEFAULT_OFF([pgtk], [use GTK to support window systems other than X])
 OPTION_DEFAULT_OFF([wr], [use WebRender to support window systems])
-OPTION_DEFAULT_OFF([wr-capture], [enable WebRender capture infrastructure])
 
 OPTION_DEFAULT_ON([gpm],[don't use -lgpm for mouse support on a GNU/Linux console])
 OPTION_DEFAULT_ON([dbus],[don't compile with D-Bus support])
@@ -689,6 +688,16 @@ AC_ARG_ENABLE(rust-debug,
 		[build rust-src in debug mode
 		 Useful for debugging rust component of emacs-ng.])],
 [ac_enable_rust_debug="${enableval}"],[])
+
+AC_ARG_ENABLE(wr-capture,
+[AS_HELP_STRING([--enable-wr-capture],
+		[enable WebRender capture infrastructure.])],
+[ac_enable_wr_capture="${enableval}"],[])
+
+AC_ARG_ENABLE(wr-x11,
+[AS_HELP_STRING([--enable-wr-x11],
+		[enable WebRender X11 support.])],
+[ac_enable_wr_x11="${enableval}"],[])
 
 dnl This used to use changequote, but, apart from 'changequote is evil'
 dnl per the autoconf manual, we can speed up autoconf somewhat by quoting
@@ -3126,8 +3135,12 @@ if test "${HAVE_WR}" = "yes"; then
     *) LIBWRTERM_ARCHIVE=libwrterm.lib ;;
   esac
 
-  if test "${with_wr_capture}" = "yes"; then
-    WR_CARGO_FEATURES="capture"
+  if test x$ac_enable_wr_capture != x ; then
+    WR_CARGO_FEATURES="\"capture\", ${WR_CARGO_FEATURES}"
+  fi
+
+  if test x$ac_enable_wr_x11 != x ; then
+    WR_CARGO_FEATURES="\"x11\", ${WR_CARGO_FEATURES}"
   fi
 
   WR_OBJ="wrterm.o wrfns.o"
@@ -3135,7 +3148,7 @@ if test "${HAVE_WR}" = "yes"; then
   if test "$opsys" = "gnu-linux"; then
     EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
       test "$HAVE_XCB" = "no" && AC_MSG_ERROR(webrender requires libxcb)
-    WR_LIBS="${WR_LIBS} -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
+    WR_LIBS="${WR_LIBS} -lX11 -lX11-xcb -lxcb -lxcb-util -lxcb-xfixes -lxcb-shape -lxcb-render"
   fi
 
   AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
@@ -6938,6 +6951,7 @@ if test "$HAVE_NS" = "yes"; then
 fi
 
 AC_CONFIG_FILES([Makefile lib/gnulib.mk])
+AC_CONFIG_FILES([$srcdir/src/wr/Cargo.toml])
 
 dnl config.status treats $srcdir specially, so I think this is ok...
 AC_CONFIG_FILES([$srcdir/doc/man/emacs.1])

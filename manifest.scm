@@ -7,6 +7,9 @@
 	      "git-cal"
 	      "gnupg"
 
+	      ;;x11 deps
+	      "libxcursor" "libxrandr" "libxi" "xorg-server-xwayland" "xcb-util"
+
 	      "emacs-rustic"
 	      "emacs-realgud"
 
