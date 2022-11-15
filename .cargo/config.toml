@@ -16,6 +16,11 @@ git = "https://github.com/declantsien/webrender_surfman.git"
 rev = "6d5c67923d85f12d3bf0f5e4fbee159772d49572"
 replace-with = "vendored-sources"
 
+[source."https://github.com/declantsien/winit"]
+git = "https://github.com/declantsien/winit"
+rev = "d80de2ea150a36d078bd19b6c6ce1cc299304fc5"
+replace-with = "vendored-sources"
+
 [source."https://github.com/servo/webrender.git"]
 git = "https://github.com/servo/webrender.git"
 rev = "da3fba3c4751c0bf4098309ecb4329110b062146"
