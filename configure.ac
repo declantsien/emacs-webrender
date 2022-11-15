@@ -3151,6 +3151,16 @@ if test "${HAVE_WR}" = "yes"; then
     WR_LIBS="${WR_LIBS} -lX11 -lX11-xcb -lxcb -lxcb-util -lxcb-xfixes -lxcb-shape -lxcb-render"
   fi
 
+  if test "${opsys}" = darwin; then
+    ns_appdir=`pwd`/nextstep/Emacs.app
+    ns_appbindir=${ns_appdir}/Contents/MacOS
+    ns_applibexecdir=${ns_appdir}/Contents/MacOS/libexec
+    ns_applibdir=${ns_appdir}/Contents/Frameworks
+    ns_appresdir=${ns_appdir}/Contents/Resources
+    ns_appsrc=Cocoa/Emacs.base
+    OTHER_FILES=ns-app
+  fi
+
   AC_DEFINE(HAVE_NATIVE_IMAGE_API, 1, [Define to use native OS APIs for images.])
   NATIVE_IMAGE_API="yes (webrender)"
 fi
