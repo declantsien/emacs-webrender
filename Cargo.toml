@@ -28,3 +28,7 @@ opt-level = 1
 
 [profile.release.build-override]
 opt-level = 1
+
+# tmp ignore macOS alternative key characters.
+[patch.crates-io]
+winit = { git = "https://github.com/declantsien/winit", rev="d80de2ea150a36d078bd19b6c6ce1cc299304fc5" }

@@ -765,7 +765,7 @@ extern "C" fn key_down(this: &Object, _sel: Sel, event: id) {
         }
         let was_in_preedit = state.ime_state == ImeState::Preedit;
 
-        let characters = get_characters(event, false);
+	let characters = get_characters(event, event_mods(event).alt());
         state.forward_key_to_app = false;
 
         // The `interpretKeyEvents` function might call

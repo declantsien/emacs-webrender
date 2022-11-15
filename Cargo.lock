@@ -3959,8 +3959,7 @@ checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
 [[package]]
 name = "winit"
 version = "0.27.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb796d6fbd86b2fd896c9471e6f04d39d750076ebe5680a3958f00f5ab97657c"
+source = "git+https://github.com/declantsien/winit?rev=d80de2ea150a36d078bd19b6c6ce1cc299304fc5#d80de2ea150a36d078bd19b6c6ce1cc299304fc5"
 dependencies = [
  "bitflags",
  "cocoa 0.24.1",
