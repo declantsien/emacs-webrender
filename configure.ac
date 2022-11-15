@@ -4036,70 +4036,11 @@ fi
 #### End of font-backend (under Haiku) selectionn.
 
 #### Start of font-backend (under WebRender) selectionn.
-WR_FONT_BACKEND=no
 if test "${HAVE_WR}" = "yes"; then
-   case $opsys in
-     cygwin|mingw32) WR_FONT_BACKEND=directwrite ;;
-     darwin) WR_FONT_BACKEND=darwin ;;
-     *) WR_FONT_BACKEND=ft ;;
-   esac
-fi
-
-if test "${WR_FONT_BACKEND}" = "ft"; then
-   EMACS_CHECK_MODULES([FREETYPE], [freetype2 >= 2.5.0])
-   test "$HAVE_FREETYPE" = "no" &&
-        AC_MSG_ERROR([WebRender on Unix requires libfreetype])
-   EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
-   test "$HAVE_FONTCONFIG" = "no" &&
+  if test "$opsys" = "gnu-linux"; then
+    EMACS_CHECK_MODULES([FONTCONFIG], [fontconfig >= 2.2.0])
+    test "$HAVE_FONTCONFIG" = "no" &&
         AC_MSG_ERROR([WebRender on Unix requires libfontconfig])
-
-   HAVE_LIBOTF=no
-
-  if test "${HAVE_FREETYPE}" = "yes"; then
-    AC_DEFINE([HAVE_FREETYPE], [1],
-	      [Define to 1 if using the freetype and fontconfig libraries.])
-    OLD_CFLAGS=$CFLAGS
-    OLD_LIBS=$LIBS
-    CFLAGS="$CFLAGS $FREETYPE_CFLAGS"
-    LIBS="$FREETYPE_LIBS $LIBS"
-    AC_CHECK_FUNCS([FT_Face_GetCharVariantIndex])
-    CFLAGS=$OLD_CFLAGS
-    LIBS=$OLD_LIBS
-    if test "${with_libotf}" != "no"; then
-      EMACS_CHECK_MODULES([LIBOTF], [libotf])
-      test "$HAVE_FREETYPE" = "no" &&
-           AC_MSG_ERROR([OTF font support requested but not found.])
-
-      if test "$HAVE_LIBOTF" = "yes"; then
-	AC_DEFINE([HAVE_LIBOTF], [1], [Define to 1 if using libotf.])
-	AC_CHECK_LIB([otf], [OTF_get_variation_glyphs],
-		     [HAVE_OTF_GET_VARIATION_GLYPHS=yes],
-		     [HAVE_OTF_GET_VARIATION_GLYPHS=no])
-	if test "${HAVE_OTF_GET_VARIATION_GLYPHS}" = "yes"; then
-	  AC_DEFINE([HAVE_OTF_GET_VARIATION_GLYPHS], [1],
-		    [Define to 1 if libotf has OTF_get_variation_glyphs.])
-	fi
-	if ! $PKG_CONFIG --atleast-version=0.9.16 libotf; then
-	  AC_DEFINE([HAVE_OTF_KANNADA_BUG], [1],
-	  [Define to 1 if libotf is affected by https://debbugs.gnu.org/28110.])
-	fi
-      fi
-    fi
-
-    if test "${HAVE_FREETYPE}" = "yes"; then
-      if test "${with_harfbuzz}" != "no"; then
-          EMACS_CHECK_MODULES([HARFBUZZ], [harfbuzz >= $harfbuzz_required_ver])
-	  test "$HAVE_HARFBUZZ" = "no" &&
-	       AC_MSG_ERROR([HARFBUZZ text shaping support requested
-		  but not found.])
-
-          if test "$HAVE_HARFBUZZ" = "yes"; then
-             AC_DEFINE([HAVE_HARFBUZZ], [1], [Define to 1 if using HarfBuzz.])
-          fi
-      fi
-    fi
-  dnl FIXME should there be an error if HAVE_FREETYPE != yes?
-  dnl Does the new font backend require it, or can it work without it?
   fi
 fi
 #### End of font-backend (under WebRender) selectionn.
@@ -6415,15 +6356,6 @@ if test "${HAVE_BE_APP}" = "yes" ; then
   if test "${HAVE_CAIRO}" = "yes"; then
     FONT_OBJ="$FONT_OBJ ftfont.o ftcrfont.o"
   fi
-fi
-
-if test "${HAVE_WR}" = "yes"; then
-   case $WR_FONT_BACKEND in
-     ft) FONT_OBJ="ftfont.o" ;;
-     directwrite) ;;
-     darwin) ;;
-     *)  ;;
-   esac
 fi
 
 if test "${HAVE_HARFBUZZ}" = "yes" ; then

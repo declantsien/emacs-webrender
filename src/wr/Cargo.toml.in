@@ -18,7 +18,6 @@ env_logger = "0.9.3"
 log = "0.4.17"
 libc = "0.2.95"
 lazy_static = "1.4"
-font-kit = "0.10.0"
 gleam = "0.13"
 copypasta = "0.8.1"
 image = "0.23.14"
@@ -29,6 +28,13 @@ once_cell = "1.16.0"
 tokio = { version = "1.21.2", features = ["rt-multi-thread", "sync", "net", "macros", "time"] }
 futures = "0.3.25"
 winit = "0.27.5"
+
+# font-kit v0.11.0 -> yeslogic-fontconfig-sys has source-fontconfig-dlopen
+# but its conflicted with winit -> sctk-adwaita -> crossfont
+[dependencies.font-kit]
+version = "0.10.0"
+default-features = false
+features = ["source"]
 
 [dependencies.webrender]
 git = "https://github.com/servo/webrender.git"
