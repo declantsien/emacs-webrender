@@ -340,3 +340,4 @@ lib-src/seccomp-filter-exec.pfc
 /target/
 
 !vendor/**
+/src/wr/Cargo.toml
