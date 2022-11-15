@@ -3147,8 +3147,13 @@ if test "${HAVE_WR}" = "yes"; then
 
   if test "$opsys" = "gnu-linux"; then
     EMACS_CHECK_MODULES([XCB], [xcb >= 1.0.0])
-      test "$HAVE_XCB" = "no" && AC_MSG_ERROR(webrender requires libxcb)
-    WR_LIBS="${WR_LIBS} -lX11 -lX11-xcb -lxcb -lxcb-util -lxcb-xfixes -lxcb-shape -lxcb-render"
+      test "$HAVE_XCB" = "no" && AC_MSG_ERROR(WebRender x11 requires libxcb)
+
+    WR_LIBS="${WR_LIBS} -lxcb -lxcb-xfixes -lxcb-shape -lxcb-render"
+
+    if test x$ac_enable_wr_x11 != x && test "$opsys" = "gnu-linux"; then
+        WR_LIBS="${WR_LIBS} -lX11 -lX11-xcb"
+    fi
   fi
 
   if test "${opsys}" = darwin; then
