@@ -286,15 +286,13 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     let frame: LispFrameRef = frame.into();
     let mut output = frame.wr_output();
 
-    let mut pixel_size = pixel_size as i64;
-
-    if pixel_size == 0 {
-        pixel_size = if !output.font.is_null() {
-            output.font.pixel_size as i64
-        } else {
-            15
-        };
-    }
+    // pixel_size here reflects to DPR 1 for webrender display, we have scale_factor from winit.
+    // while pgtk/ns/w32 reflects to actual DPR on device by setting resx/resy to display
+    let mut pixel_size = if !output.font.is_null() {
+        output.font.pixel_size as i64
+    } else {
+        pixel_size as i64
+    };
 
     let device_pixel_ratio = output.device_pixel_ratio();
     let glyph_size = pixel_size as f32 * device_pixel_ratio;

@@ -36,7 +36,7 @@ use lisp_types::{
         gui_set_right_divider_width, gui_set_right_fringe, gui_set_screen_gamma,
         gui_set_scroll_bar_height, gui_set_scroll_bar_width, gui_set_unsplittable,
         gui_set_vertical_scroll_bars, gui_set_visibility, gui_update_cursor, gui_write_glyphs,
-        input_event, kbd_buffer_store_event_hold, run, unblock_input, Time,
+        input_event, kbd_buffer_store_event_hold, run, unblock_input, Time, PT_PER_INCH,
     },
     bindings::{
         create_terminal, current_kboard, draw_fringe_bitmap_params, fontset_from_font,
@@ -912,8 +912,10 @@ pub fn wr_term_init(display_name: LispObject) -> DisplayInfoRef {
         dpyinfo_ref.smallest_font_height = 1;
         dpyinfo_ref.smallest_char_width = 1;
 
-        dpyinfo_ref.resx = 1.0;
-        dpyinfo_ref.resy = 1.0;
+	// we have https://docs.rs/winit/0.23.0/winit/dpi/index.html
+	// set to base DPI PT_PER_INCH to equal out POINT_TO_PIXEL/PIXEL_TO_POINT
+        dpyinfo_ref.resx = PT_PER_INCH;
+        dpyinfo_ref.resy = PT_PER_INCH;
     }
 
     // Set the name of the terminal.
