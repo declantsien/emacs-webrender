@@ -844,7 +844,7 @@ extern "C" fn delete_frame(f: *mut Lisp_Frame) {
     display_info.get_inner().outputs.remove(&window_id);
 
     // Take back output ownership and destroy it
-    let _ = unsafe { Box::from_raw(output.as_rust_ptr()) };
+    let _ = unsafe { Box::from_raw(output.as_rust_ptr()).deinit() };
 }
 
 fn wr_create_terminal(mut dpyinfo: DisplayInfoRef) -> TerminalRef {

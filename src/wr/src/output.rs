@@ -506,6 +506,13 @@ impl Output {
             .resize(Size2D::new(size.width as i32, size.height as i32))
             .unwrap();
     }
+
+    pub fn deinit(self) {
+	if let Err(err) = self.webrender_surfman.make_gl_context_current() {
+            warn!("Failed to make GL context current: {:?}", err);
+        }
+        self.renderer.deinit();
+    }
 }
 
 #[derive(PartialEq)]
