@@ -309,7 +309,9 @@ impl Output {
 
     fn ensure_context_is_current(&mut self) {
         // Make sure the gl context is made current.
-        self.webrender_surfman.make_gl_context_current().unwrap();
+	if let Err(err) = self.webrender_surfman.make_gl_context_current() {
+            warn!("Failed to make GL context current: {:?}", err);
+        }
         debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR,);
     }
 
