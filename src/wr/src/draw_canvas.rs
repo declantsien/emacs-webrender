@@ -376,7 +376,7 @@ impl DrawCanvas {
                 }
             });
         } else {
-	    error!("unimplemented")
+            unimplemented!();
         }
     }
 

@@ -89,13 +89,13 @@ pub extern "C" fn wr_get_baseline_offset(output: OutputRef) -> i32 {
 #[allow(unused_variables)]
 #[no_mangle]
 pub extern "C" fn wr_get_pixel(ximg: *mut Emacs_Image, x: i32, y: i32) -> i32 {
-    error!("unimplemented");
+    unimplemented!();
 }
 
 #[allow(unused_variables)]
 #[no_mangle]
 pub extern "C" fn wr_put_pixel(ximg: *mut Emacs_Image, x: i32, y: i32, pixel: u64) {
-    error!("unimplemented");
+    unimplemented!();
 }
 
 #[no_mangle]
@@ -202,7 +202,7 @@ pub extern "C" fn frame_set_mouse_pixel_position(f: LispFrameRef, pix_x: i32, pi
 
 #[no_mangle]
 pub extern "C" fn image_sync_to_pixmaps(_frame: LispFrameRef, _img: *mut Emacs_Image) {
-    error!("unimplemented");
+    unimplemented!();
 }
 
 #[no_mangle]
@@ -215,7 +215,7 @@ pub extern "C" fn image_pixmap_draw_cross(
     _height: u32,
     _color: u64,
 ) {
-    error!("unimplemented");
+    unimplemented!();
 }
 
 /// Hide the current tooltip window, if there is any.
