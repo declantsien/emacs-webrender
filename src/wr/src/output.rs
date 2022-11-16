@@ -85,7 +85,6 @@ impl Output {
         };
 
         let window = window_builder.build(&event_loop.el()).unwrap();
-        let window_id = window.id();
 
         // Initialize surfman
         let connection =
