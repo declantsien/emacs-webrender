@@ -1,23 +1,6 @@
 #include <config.h>
-
 #include "term.h"
 #include "lisp.h"
-
-/* pub extern "C" fn wr_init_syms() { */
-/*     #[cfg(feature = "capture")] */
-/*     { */
-/*         let wr_capture_sym = */
-/*             CString::new("wr-capture").expect("Failed to create string for intern function call"); */
-/*         def_lisp_sym!(Qwr_capture, "wr-capture"); */
-/*         unsafe { */
-/*             Fprovide( */
-/*                 emacs::bindings::intern_c_string(wr_capture_sym.as_ptr()), */
-/*                 Qnil, */
-/*             ); */
-/*         } */
-/*     } */
-
-/* } */
 
 void
 syms_of_wrterm (void)
@@ -63,9 +46,11 @@ syms_of_wrterm (void)
 		       clipboard manager if one is present.  */);
   Vx_select_enable_clipboard_manager = Qt;
 
-  /* DEFVAR_LISP ("webrender-head-rev", Vwebrender_head_rev, */
-  /* 	       doc: /\* String containing the webrender head rev Emacs was built with.  *\/); */
-  /* Vwebrender_head_rev = build_string (WEBRENDER_HEAD_REV); */
+#ifdef WEBRENDER_HEAD_REV
+  DEFVAR_LISP ("webrender-head-rev", Vwebrender_head_rev,
+	       doc: /* String containing the webrender head rev Emacs was built with.  */);
+  Vwebrender_head_rev = build_string (WEBRENDER_HEAD_REV);
+#endif
 
   syms_of_wrterm_rust();
 

@@ -22,7 +22,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
     monitor::MonitorHandle,
     platform::run_return::EventLoopExtRunReturn,
-    window::{WindowBuilder, WindowId},
+    window::WindowId,
 };
 
 use crate::future::batch_select;
@@ -120,7 +120,7 @@ fn build_clipboard(event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
 }
 
 pub static EVENT_LOOP: Lazy<Mutex<WrEventLoop>> = Lazy::new(|| {
-    let el = winit::event_loop::EventLoop::with_user_event();
+    let el = winit::event_loop::EventLoopBuilder::<i32>::with_user_event().build();
     let clipboard = build_clipboard(&el);
 
     Mutex::new(WrEventLoop { clipboard, el })

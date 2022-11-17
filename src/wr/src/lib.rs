@@ -8,29 +8,6 @@ extern crate lisp_macros;
 extern crate lisp_util;
 extern crate colors;
 
-// mod platform {
-//     #[cfg(target_os = "macos")]
-//     pub use crate::platform::macos::font;
-//     #[cfg(any(target_os = "android", all(unix, not(target_os = "macos"))))]
-//     pub use crate::platform::unix::font;
-//     #[cfg(target_os = "windows")]
-//     pub use crate::platform::windows::font;
-
-//     #[cfg(target_os = "macos")]
-//     pub mod macos {
-//         pub mod font;
-//     }
-//     #[cfg(any(target_os = "android", all(unix, not(target_os = "macos"))))]
-//     pub mod unix {
-//         pub mod font;
-// 	mod font_db;
-//     }
-//     #[cfg(target_os = "windows")]
-//     pub mod windows {
-//         pub mod font;
-//     }
-// }
-
 pub mod color;
 pub mod display_info;
 pub mod font;

@@ -7,9 +7,9 @@ use webrender::api::*;
 
 use lisp_types::{
     bindings::{
-        debug_print, font, font_driver, font_make_entity, font_make_object, font_metrics,
-        font_property_index, font_style_to_value, frame, glyph_string, intern, Fassoc, Fcdr, Fcons,
-        Fmake_symbol, Fnreverse, FONT_INVALID_CODE,
+        font, font_driver, font_make_entity, font_make_object, font_metrics, font_property_index,
+        font_style_to_value, frame, glyph_string, intern, Fassoc, Fcdr, Fcons, Fmake_symbol,
+        Fnreverse, FONT_INVALID_CODE,
     },
     frame::LispFrameRef,
     globals::{
@@ -288,7 +288,7 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
 
     // pixel_size here reflects to DPR 1 for webrender display, we have scale_factor from winit.
     // while pgtk/ns/w32 reflects to actual DPR on device by setting resx/resy to display
-    let mut pixel_size = if !output.font.is_null() {
+    let pixel_size = if !output.font.is_null() {
         output.font.pixel_size as i64
     } else {
         pixel_size as i64
@@ -326,7 +326,7 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
         let slant = font_entity.get_slant().unwrap();
 
         let family = FONT_DB.normalize_family_name(family.as_str()).unwrap();
-	let family = Family::Name(family);
+        let family = Family::Name(family);
 
         FONT_DB
             .query(&Query {

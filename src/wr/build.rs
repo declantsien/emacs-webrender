@@ -2,49 +2,10 @@
 
 extern crate cbindgen;
 
-use std::path::PathBuf;
 use cbindgen::Config;
-
-use cargo_toml::Dependency;
-use cargo_toml::Manifest;
-use std::fs::read;
+use std::path::PathBuf;
 
 use std::env;
-use std::fs;
-use std::io::Write;
-use std::path::Path;
-
-const WEBRENDER_DEP_NAME: &str = "webrender";
-
-fn generate_webrender_revision() {
-    let out_dir = env::var_os("OUT_DIR").unwrap();
-    let revision_file_path = Path::new(&out_dir).join("webrender_revision.rs");
-    let manifest = Manifest::from_slice(&read("Cargo.toml").unwrap()).unwrap();
-    let webrender_head_rev = {
-        if !manifest.dependencies.contains_key(WEBRENDER_DEP_NAME) {
-            "unknown"
-        } else {
-            let webrender_dep = &manifest.dependencies[WEBRENDER_DEP_NAME];
-            match webrender_dep {
-                Dependency::Detailed(detail) => detail.rev.as_ref().unwrap(),
-                Dependency::Simple(version) => version,
-                _ => "unknown",
-            }
-        }
-    };
-
-    let mut revision_file = fs::File::create(&revision_file_path).unwrap();
-
-    write!(
-        &mut revision_file,
-        "{}",
-        format!(
-            "static WEBRENDER_HEAD_REV: Option<&'static str> = Some(\"{}\");",
-            webrender_head_rev
-        )
-    )
-    .unwrap();
-}
 
 fn generate_webrender_ffi() {
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -58,18 +19,17 @@ fn generate_webrender_ffi() {
 
     let config = Config {
         namespace: Some(String::from("ffi")),
-	language: cbindgen::Language::C,
+        language: cbindgen::Language::C,
         ..Default::default()
     };
 
     cbindgen::generate_with_config(&crate_dir, config)
-	.unwrap()
-	.write_to_file(&output_file);
+        .unwrap()
+        .write_to_file(&output_file);
 }
 
 fn main() {
-    // generate_webrender_ffi();
-    generate_webrender_revision();
+    generate_webrender_ffi();
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=cbindgen.toml");
 }

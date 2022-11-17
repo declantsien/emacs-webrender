@@ -190,9 +190,6 @@ void image_sync_to_pixmaps (struct frame *, struct image *);
 void image_pixmap_draw_cross(struct frame *, Emacs_Pixmap, int, int, unsigned int,
   unsigned int, unsigned long);
 
-void image_pixmap_draw_cross(struct frame *, Emacs_Pixmap, int, int, unsigned int,
-  unsigned int, unsigned long);
-
 #endif /* HAVE_WR */
 
 static void image_disable_image (struct frame *, struct image *);
@@ -649,6 +646,7 @@ image_create_bitmap_from_file (struct frame *f, Lisp_Object file)
 {
 #if defined (HAVE_NTGUI)
   return -1;  /* W32_TODO : bitmap support */
+#elif defined (HAVE_WR)
 #else
   Display_Info *dpyinfo = FRAME_DISPLAY_INFO (f);
 #endif
@@ -850,6 +848,10 @@ image_create_bitmap_from_file (struct frame *f, Lisp_Object file)
 
   xfree (contents);
   return id;
+#endif
+
+#if defined (HAVE_WR)
+  return -1;
 #endif
 }
 
@@ -2550,6 +2552,7 @@ compute_image_size (double width, double height,
 
 typedef double matrix3x3[3][3];
 
+# if !defined HAVE_WR
 static void
 matrix3x3_mult (matrix3x3 a, matrix3x3 b, matrix3x3 result)
 {
@@ -2562,6 +2565,7 @@ matrix3x3_mult (matrix3x3 a, matrix3x3 b, matrix3x3 result)
 	result[i][j] = sum;
       }
 }
+#endif
 
 static void
 compute_image_rotation (struct image *img, double *rotation)
@@ -2663,6 +2667,7 @@ image_set_transform (struct frame *f, struct image *img)
 
   /* Perform scale transformation.  */
 
+# if !defined HAVE_WR
   matrix3x3 matrix
     = {
 # if defined USE_CAIRO || defined HAVE_XRENDER
@@ -2679,6 +2684,7 @@ image_set_transform (struct frame *f, struct image *img)
 	[0][0] = 1, [1][1] = 1,
 # endif
 	[2][2] = 1 };
+# endif //!defined HAVE_WR
   img->width = width;
   img->height = height;
 
@@ -3514,6 +3520,10 @@ image_create_x_image_and_pixmap_1 (struct frame *f, int width, int height, int d
   *pimg = *pixmap;
   return 1;
 #endif
+
+#if defined (HAVE_WR)
+  return 0;
+#endif
 }
 
 
@@ -3690,6 +3700,8 @@ image_get_x_image (struct frame *f, struct image *img, bool mask_p)
 
   ns_retain_object (pixmap);
   return pixmap;
+#elif defined (HAVE_WR)
+  return NULL;
 #endif
 }
 

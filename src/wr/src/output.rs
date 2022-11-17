@@ -1,7 +1,7 @@
-use std::{cell::RefCell, mem::MaybeUninit, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 use euclid::default::Size2D;
-use gleam::gl::{self, Gl};
+use gleam::gl;
 use log::warn;
 use std::{
     ops::{Deref, DerefMut},
@@ -139,7 +139,7 @@ impl Output {
         let epoch = Epoch(0);
         let pipeline_id = PipelineId(0, 0);
 
-        let mut api = sender.create_api();
+        let api = sender.create_api();
         let device_size = {
             let size = window.inner_size();
             DeviceIntSize::new(size.width as i32, size.height as i32)
@@ -321,7 +321,7 @@ impl Output {
         if let Some(mut builder) = builder {
             let layout_size = Self::get_size(&self.get_window());
 
-            let epoch = Epoch(0);
+            let epoch = self.epoch;
             let mut txn = Transaction::new();
 
             txn.set_display_list(epoch, None, layout_size.to_f32(), builder.end());
@@ -563,11 +563,11 @@ impl From<*mut wr_output> for OutputRef {
 }
 
 struct Notifier {
-    events_proxy: winit::event_loop::EventLoopProxy<(i32)>,
+    events_proxy: winit::event_loop::EventLoopProxy<i32>,
 }
 
 impl Notifier {
-    fn new(events_proxy: winit::event_loop::EventLoopProxy<(i32)>) -> Notifier {
+    fn new(events_proxy: winit::event_loop::EventLoopProxy<i32>) -> Notifier {
         Notifier { events_proxy }
     }
 }

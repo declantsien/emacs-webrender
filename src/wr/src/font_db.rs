@@ -1,9 +1,9 @@
 use font_kit::{
     family_name::FamilyName,
-    properties::{Properties, Stretch, Style, Weight},
-    source::{Source, SystemSource},
+    properties::Properties,
+    source::SystemSource,
 };
-use fontdb::{FaceInfo, Family, Query};
+use fontdb::{FaceInfo, Query};
 
 pub struct FontDB {
     pub db: fontdb::Database,
@@ -21,7 +21,7 @@ impl FontDB {
             for handle in font_handles {
 		if let font_kit::handle::Handle::Path {
                     ref path,
-                    font_index,
+                    font_index: _,
 		} = handle
 		{
                     if let Err(e) = db.load_font_file(path) {
@@ -98,22 +98,6 @@ impl FontDB {
             }
             _ => None,
         }
-    }
-
-    fn default_font_family(default_font_family: FamilyName) -> Option<String> {
-        let family = SystemSource::new()
-            .select_family_by_generic_name(&default_font_family)
-            .ok()?;
-
-        let fonts = family.fonts();
-
-        if fonts.len() == 0 {
-            return None;
-        }
-
-        let font = fonts[0].load().ok()?;
-
-        Some(font.family_name())
     }
 
     pub fn normalize_family_name<'a>(&'a self, family_name: &'a str) -> Option<&'a str> {

@@ -69,7 +69,7 @@ impl Drop for DisplayInfo {
     fn drop(&mut self) {
         if self.0.inner != ptr::null_mut() {
             unsafe {
-                Box::from_raw(self.0.inner as *mut DisplayInfoInner);
+                let _ = Box::from_raw(self.0.inner as *mut DisplayInfoInner);
             }
         }
     }

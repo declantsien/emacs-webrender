@@ -1,7 +1,5 @@
 //! wrterm.rs
 
-include!(concat!(env!("OUT_DIR"), "/webrender_revision.rs"));
-
 use lisp_types::multibyte::LispStringRef;
 use std::ffi::CString;
 use std::ptr;
@@ -27,17 +25,15 @@ use lisp_types::{
     bindings::globals,
     bindings::resource_types::{RES_TYPE_NUMBER, RES_TYPE_STRING, RES_TYPE_SYMBOL},
     bindings::{
-        block_input, build_string, gui_display_get_arg, hashtest_eql, image as Emacs_Image, list3i,
-        make_fixnum, make_hash_table, make_monitor_attribute_list, register_font_driver,
-        unblock_input, Display, Emacs_Pixmap, Emacs_Rectangle, Fcons, Fcopy_alist, Fmake_vector,
-        Fprovide, MonitorInfo, Vframe_list, Window, CHECK_STRING, DEFAULT_REHASH_SIZE,
-        DEFAULT_REHASH_THRESHOLD,
+        block_input, build_string, gui_display_get_arg, image as Emacs_Image, list3i,
+        make_fixnum, make_monitor_attribute_list, register_font_driver,
+        unblock_input, Display, Emacs_Pixmap, Emacs_Rectangle, Fcons, Fcopy_alist, Fmake_vector, MonitorInfo, Vframe_list, Window, CHECK_STRING,
     },
     definitions::EmacsInt,
     frame::{all_frames, window_frame_live_or_selected, LispFrameRef},
     globals::{
         Qbackground_color, Qfont, Qfont_backend, Qforeground_color, Qleft_fringe, Qminibuffer,
-        Qname, Qnil, Qparent_id, Qright_fringe, Qt, Qterminal, Qunbound, Qwr, Qx_create_frame_1,
+        Qname, Qnil, Qparent_id, Qright_fringe, Qterminal, Qunbound, Qx_create_frame_1,
         Qx_create_frame_2,
     },
     lisp::{ExternalPtr, LispObject},
