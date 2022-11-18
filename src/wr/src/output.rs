@@ -97,7 +97,6 @@ impl Output {
 
         // Make sure the gl context is made current.
         webrender_surfman.make_gl_context_current().unwrap();
-        debug_assert_eq!(gl.get_error(), gleam::gl::NO_ERROR,);
 
         let webrender_opts = webrender::WebRenderOptions {
             clear_color: ColorF::new(1.0, 1.0, 1.0, 1.0),
@@ -287,6 +286,8 @@ impl Output {
 
             f(builder, space_and_clip);
         }
+
+	self.assert_no_gl_error();
     }
 
     fn ensure_context_is_current(&mut self) {
@@ -294,10 +295,12 @@ impl Output {
 	if let Err(err) = self.webrender_surfman.make_gl_context_current() {
             warn!("Failed to make GL context current: {:?}", err);
         }
-        debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR,);
+	self.assert_no_gl_error();
     }
 
     pub fn flush(&mut self) {
+	self.assert_no_gl_error();
+
         let builder = std::mem::replace(&mut self.display_list_builder, None);
 
         if let Some(mut builder) = builder {
@@ -327,10 +330,13 @@ impl Output {
                 .unwrap_or(0);
             self.gl
                 .bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
+	    self.assert_gl_framebuffer_complete();
 
             self.renderer.update();
 
             self.ensure_context_is_current();
+
+	    self.assert_no_gl_error();
 
             self.renderer.render(device_size, 0).unwrap();
             let _ = self.renderer.flush_pipeline_info();
@@ -345,6 +351,23 @@ impl Output {
                 warn!("Failed to present surface: {:?}", err);
             }
         }
+    }
+
+    #[track_caller]
+    fn assert_no_gl_error(&self) {
+        debug_assert_eq!(self.gl.get_error(), gleam::gl::NO_ERROR);
+    }
+
+    #[track_caller]
+    fn assert_gl_framebuffer_complete(&self) {
+        debug_assert_eq!(
+            (
+                self.gl.get_error(),
+                self.gl
+                    .check_frame_buffer_status(gleam::gl::FRAMEBUFFER)
+            ),
+            (gleam::gl::NO_ERROR, gleam::gl::FRAMEBUFFER_COMPLETE)
+        );
     }
 
     pub fn get_previous_frame(&self) -> Option<ImageKey> {
