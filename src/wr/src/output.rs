@@ -322,6 +322,8 @@ impl Output {
             let device_size = self.get_deivce_size();
 
             // Bind the webrender framebuffer
+	    self.ensure_context_is_current();
+
             let framebuffer_object = self
                 .webrender_surfman
                 .context_surface_info()
@@ -333,8 +335,6 @@ impl Output {
 	    self.assert_gl_framebuffer_complete();
 
             self.renderer.update();
-
-            self.ensure_context_is_current();
 
 	    self.assert_no_gl_error();
 
