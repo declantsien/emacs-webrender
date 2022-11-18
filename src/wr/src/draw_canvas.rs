@@ -227,6 +227,11 @@ impl DrawCanvas {
     fn draw_image_glyph(&mut self, mut s: GlyphStringRef) {
         let wr_pixmap = unsafe { (*s.img).pixmap } as *mut WrPixmap;
 
+	// TODO null pixmap? 0x0
+	if wr_pixmap.is_null() {
+	    return
+	}
+
         let image_key = unsafe { (*wr_pixmap).image_key };
 
         let mut clip_rect = Emacs_Rectangle {
