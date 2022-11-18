@@ -1147,7 +1147,6 @@ This returns an error if any Emacs frames are X frames."
                                             &optional display)
   "Initialize Emacs for X frames and open the first connection to an X server."
   (cl-assert (not wr-initialized))
-  (message "window-system-initialization `%s'" initial-window-system)
 
   (x-open-connection (or display
 			 (setq x-display-name (or (getenv "DISPLAY" (selected-frame))

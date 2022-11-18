@@ -314,8 +314,6 @@ pub fn wr_create_frame(parms: LispObject) -> LispFrameRef {
 
     let mut frame = create_frame(display, dpyinfo, tem, kb.into());
 
-    println!("default font: {:?}", default_monospace_family_name());
-
     unsafe {
         register_font_driver(&FONT_DRIVER.0 as *const _, frame.as_mut());
     };
@@ -432,6 +430,9 @@ pub fn x_open_connection(
     };
 
     unsafe { CHECK_STRING(display) };
+
+    let mut event_loop = EVENT_LOOP.lock().unwrap();
+    let _native_display = event_loop.open_native_display();
 
     let mut display_info = wr_term_init(display);
 

@@ -22,10 +22,15 @@ use winit::{
     event_loop::{ControlFlow, EventLoop, EventLoopProxy},
     monitor::MonitorHandle,
     platform::run_return::EventLoopExtRunReturn,
+    window::Window,
     window::WindowId,
 };
 
 use crate::future::batch_select;
+
+use surfman::Connection;
+use surfman::SurfaceType;
+use webrender_surfman::WebrenderSurfman;
 
 use lisp_types::bindings::{inhibit_window_system, thread_select};
 
@@ -45,6 +50,7 @@ unsafe impl Send for Platform {}
 pub struct WrEventLoop {
     clipboard: Box<dyn ClipboardProvider>,
     el: EventLoop<i32>,
+    pub connection: Option<Connection>,
 }
 
 unsafe impl Send for WrEventLoop {}
@@ -55,8 +61,43 @@ impl WrEventLoop {
         &self.el
     }
 
+    pub fn connection(&mut self) -> &Connection {
+        if self.connection.is_none() {
+            self.open_native_display();
+        }
+        self.connection.as_ref().unwrap()
+    }
+
     pub fn create_proxy(&self) -> EventLoopProxy<i32> {
         self.el.create_proxy()
+    }
+
+    pub fn new_webrender_surfman(&mut self, window: &Window) -> WebrenderSurfman {
+        let connection = self.connection();
+        let adapter = connection
+            .create_adapter()
+            .expect("Failed to create adapter");
+        let native_widget = connection
+            .create_native_widget_from_winit_window(&window)
+            .expect("Failed to create native widget");
+        let surface_type = SurfaceType::Widget { native_widget };
+        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
+            .expect("Failed to create WR surfman");
+
+        webrender_surfman
+    }
+
+    pub fn open_native_display(&mut self) -> &Option<Connection> {
+        let window_builder = winit::window::WindowBuilder::new().with_visible(false);
+        let window = window_builder.build(&self.el).unwrap();
+
+        // Initialize surfman
+        let connection =
+            Connection::from_winit_window(&window).expect("Failed to create connection");
+
+        self.connection = Some(connection);
+
+        &self.connection
     }
 
     pub fn wait_for_window_resize(&mut self, target_window_id: WindowId) {
@@ -122,8 +163,13 @@ fn build_clipboard(event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
 pub static EVENT_LOOP: Lazy<Mutex<WrEventLoop>> = Lazy::new(|| {
     let el = winit::event_loop::EventLoopBuilder::<i32>::with_user_event().build();
     let clipboard = build_clipboard(&el);
+    let connection = None;
 
-    Mutex::new(WrEventLoop { clipboard, el })
+    Mutex::new(WrEventLoop {
+        clipboard,
+        el,
+        connection,
+    })
 });
 
 pub static TOKIO_RUNTIME: Lazy<Mutex<Runtime>> =

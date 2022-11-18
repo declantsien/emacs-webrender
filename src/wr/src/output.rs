@@ -7,9 +7,7 @@ use std::{
     ops::{Deref, DerefMut},
     ptr,
 };
-use surfman::Connection;
 use surfman::GLApi;
-use surfman::SurfaceType;
 use webrender_surfman::WebrenderSurfman;
 use winit::{
     self,
@@ -85,19 +83,7 @@ impl Output {
         };
 
         let window = window_builder.build(&event_loop.el()).unwrap();
-
-        // Initialize surfman
-        let connection =
-            Connection::from_winit_window(&window).expect("Failed to create connection");
-        let adapter = connection
-            .create_adapter()
-            .expect("Failed to create adapter");
-        let native_widget = connection
-            .create_native_widget_from_winit_window(&window)
-            .expect("Failed to create native widget");
-        let surface_type = SurfaceType::Widget { native_widget };
-        let webrender_surfman = WebrenderSurfman::create(&connection, &adapter, surface_type)
-            .expect("Failed to create WR surfman");
+        let webrender_surfman = event_loop.new_webrender_surfman(&window);
 
         // Get GL bindings
         let gl = match webrender_surfman.connection().gl_api() {
@@ -108,10 +94,6 @@ impl Output {
         };
 
         let gl = gl::ErrorCheckingGl::wrap(gl);
-
-        println!("OpenGL version {}", gl.get_string(gl::VERSION));
-        let device_pixel_ratio = window.scale_factor() as f32;
-        println!("Device pixel ratio: {}", device_pixel_ratio);
 
         // Make sure the gl context is made current.
         webrender_surfman.make_gl_context_current().unwrap();
