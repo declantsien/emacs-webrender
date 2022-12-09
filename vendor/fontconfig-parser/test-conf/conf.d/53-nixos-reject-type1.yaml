@@ -1,8 +1,0 @@
----
-- SelectFont:
-    rejects:
-      - Pattern:
-          - Fontformat:
-              Simple:
-                String: Type 1
-    accepts: []
