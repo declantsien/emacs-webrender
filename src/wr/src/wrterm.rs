@@ -14,7 +14,7 @@ use crate::frame::frame_edges;
 use crate::frame::LispFrameExt;
 use crate::{
     color::lookup_color_by_name_or_hex,
-    font::{FontRef, FONT_DRIVER, default_monospace_family_name},
+    font::{FontRef, FONT_DRIVER},
     frame::create_frame,
     input::winit_keycode_emacs_key_name,
     output::OutputRef,
@@ -25,9 +25,10 @@ use lisp_types::{
     bindings::globals,
     bindings::resource_types::{RES_TYPE_NUMBER, RES_TYPE_STRING, RES_TYPE_SYMBOL},
     bindings::{
-        block_input, build_string, gui_display_get_arg, image as Emacs_Image, list3i,
-        make_fixnum, make_monitor_attribute_list, register_font_driver,
-        unblock_input, Display, Emacs_Pixmap, Emacs_Rectangle, Fcons, Fcopy_alist, Fmake_vector, MonitorInfo, Vframe_list, Window, CHECK_STRING,
+        block_input, build_string, gui_display_get_arg, image as Emacs_Image, list3i, make_fixnum,
+        make_monitor_attribute_list, register_font_driver, unblock_input, Display, Emacs_Pixmap,
+        Emacs_Rectangle, Fcons, Fcopy_alist, Fmake_vector, MonitorInfo, Vframe_list, Window,
+        CHECK_STRING,
     },
     definitions::EmacsInt,
     frame::{all_frames, window_frame_live_or_selected, LispFrameRef},
@@ -330,7 +331,7 @@ pub fn wr_create_frame(parms: LispObject) -> LispFrameRef {
     frame.gui_default_parameter(
         parms,
         Qfont,
-        default_monospace_family_name().into(),
+        "Monospace".into(),
         "font",
         "Font",
         RES_TYPE_STRING,

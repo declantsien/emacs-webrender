@@ -1,136 +1,143 @@
-use font_kit::{
-    family_name::FamilyName,
-    properties::Properties,
-    source::SystemSource,
-};
-use fontdb::{FaceInfo, Query};
+use font_loader::system_fonts;
 
-pub struct FontDB {
-    pub db: fontdb::Database,
+use lisp_types::{
+    bindings::{font_property_index, xlispstrdup, AREF, SYMBOL_NAME},
+    lisp::LispObject,
+};
+use std::path::PathBuf;
+use std::str;
+use std::{ffi::CStr, fs::File, io::Read};
+use ttf_parser::{Style, Weight};
+
+// pub const PLATFORM_DEFAULT_FACE_NAME: &str = "Courier New";
+
+// TODO(gw): This descriptor matches what we currently support for fonts
+//           but is quite a mess. We should at least document and
+//           use better types for things like the style and stretch.
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum FontDescriptor {
+    Path {
+        path: PathBuf,
+        font_index: u32,
+    },
+    Family {
+        name: String,
+    },
+    Properties {
+        family: String,
+        weight: Weight,
+        style: Style,
+        stretch: u32,
+    },
 }
+
+impl FontDescriptor {
+    pub fn from_font_spec(font_spec: LispObject) -> FontDescriptor {
+        let family = unsafe {
+            AREF(
+                font_spec,
+                font_property_index::FONT_FAMILY_INDEX.try_into().unwrap(),
+            )
+        };
+        // unsafe{ debug_print(font_spec)};
+        let family = unsafe { xlispstrdup(SYMBOL_NAME(family)) };
+        let family: &CStr = unsafe { CStr::from_ptr(family) };
+        let family: &str = family.to_str().unwrap();
+        let family: String = family.to_owned();
+        let family = family.replace(" Regular", "");
+        // println!("family: {:?}", family);
+
+        //TODO Read weight/style/stretch
+        FontDescriptor::Properties {
+            family,
+            weight: Weight::from(400),
+            style: Style::Normal,
+            stretch: None.unwrap_or(5) as u32,
+        }
+
+        // let path = rsrc_path(&item["font"], aux_dir);
+        // FontDescriptor::Path {
+        //     path,
+        //     font_index: item["font-index"].as_i64().unwrap_or(0) as u32,
+        // }
+
+        // FontDescriptor::Family {
+        //     name: PLATFORM_DEFAULT_FACE_NAME.to_string(),
+        // }
+    }
+}
+
+pub struct FontDB {}
 
 impl FontDB {
     pub fn new() -> FontDB {
-        let mut db = fontdb::Database::new();
-	#[cfg(any(target_os = "macos", target_os = "windows"))]
-	db.load_system_fonts();
-	#[cfg(any(target_os = "android", all(unix, not(target_os = "macos"))))]
-	{
-	    let source = SystemSource::new();
-            let font_handles = source.all_fonts().unwrap();
-            for handle in font_handles {
-		if let font_kit::handle::Handle::Path {
-                    ref path,
-                    font_index: _,
-		} = handle
-		{
-                    if let Err(e) = db.load_font_file(path) {
-			log::warn!("Failed to load '{}' cause {}.", path.display(), e);
-                    }
-		}
-            }
-	};
-
-
-        FontDB { db }
+        FontDB {}
     }
 
-    pub fn select_family(&self, family_name: &str) -> Vec<&FaceInfo> {
-	self.normalize_family_name(family_name)
-	    .map(|family| {
-                self.db
-                    .faces()
-                    .iter()
-                    .filter(|f| f.family == family)
-                    .collect::<Vec<&FaceInfo>>()
-            })
-            .unwrap_or_else(|| Vec::new())
-    }
-
-    pub fn select_postscript(&self, postscript_name: &str) -> Option<&FaceInfo> {
-        self.db
-            .faces()
-            .iter()
-            .filter(|f| f.post_script_name == postscript_name)
-            .next()
-    }
-
-    pub fn query(&self, query: &Query<'_>) -> Option<&FaceInfo> {
-        self.db.query(query).and_then(|id| self.db.face(id))
-    }
-
-    pub fn select_best_match(
-        &self,
-        family_names: &[FamilyName],
-        properties: &Properties,
-    ) -> Option<font_kit::font::Font> {
-        let selection_result = SystemSource::new().select_best_match(family_names, &properties);
-        match selection_result {
-            Ok(handle) => {
-                let loading_result = handle.load();
-                match loading_result {
-                    Ok(font) => Some(font),
-                    Err(e) => {
-                        log::warn!("Failed to load {:?} cause {}.", family_names, e);
-                        None
-                    }
-                }
-            }
-            Err(e) => {
-                log::warn!("Failed to select {:?} cause {}.", family_names, e);
-                None
-            }
+    pub fn normalize_family_name(family_name: &str) -> String {
+        match family_name.clone().to_lowercase().as_str() {
+            "serif" => "Times New Roman".to_string(),
+            "sans-serif" => "Arial".to_string(),
+            "sans serif" => "Arial".to_string(),
+            "monospace" => "Courier New".to_string(),
+            "cursive" => "Comic Sans MS".to_string(),
+            #[cfg(target_os = "macos")]
+            "fantasy" => "Papyrus".to_string(),
+            #[cfg(not(target_os = "macos"))]
+            "fantasy" => "Impact".to_string(),
+            _ => family_name.to_string(),
         }
     }
 
-    pub fn all_fonts(&self) -> Vec<&FaceInfo> {
-        self.db.faces().iter().collect::<Vec<&FaceInfo>>()
-    }
-
-    pub fn all_families(&self) -> Option<Vec<String>> {
-        match SystemSource::new().all_families().ok() {
-            Some(families_) => {
-                let mut families = vec![];
-                for family in families_ {
-                    families.push(family.replace('\'', "").trim().to_string());
-                }
-                Some(families)
+    pub fn data_from_desc(desc: FontDescriptor) -> (Vec<u8>, u32) {
+        // println!("desc: {:?}", desc);
+        match desc {
+            FontDescriptor::Path {
+                ref path,
+                font_index,
+            } => {
+                let mut file = File::open(path).expect("Couldn't open font file");
+                let mut bytes = vec![];
+                file.read_to_end(&mut bytes)
+                    .expect("failed to read font file");
+                (bytes, font_index.try_into().unwrap())
             }
-            _ => None,
+            FontDescriptor::Family { ref name } => FontDB::data_from_name(name),
+            FontDescriptor::Properties {
+                ref family,
+                weight,
+                style,
+                stretch: _,
+            } => FontDB::data_from_properties(family, weight, style),
         }
     }
 
-    pub fn normalize_family_name<'a>(&'a self, family_name: &'a str) -> Option<&'a str> {
-        let family_name = match family_name.clone().to_lowercase().as_str() {
-            "serif" => FamilyName::Serif,
-            "sans-serif" => FamilyName::SansSerif,
-	    "sans serif" => FamilyName::SansSerif,
-            "monospace" => FamilyName::Monospace,
-            "cursive" => FamilyName::Cursive,
-            "fantasy" => FamilyName::Fantasy,
-            _ => FamilyName::Title(family_name.to_string()),
+    pub fn data_from_name(family_name: &str) -> (Vec<u8>, u32) {
+        let family_name = Self::normalize_family_name(family_name);
+        let property = system_fonts::FontPropertyBuilder::new()
+            .family(&family_name)
+            .build();
+        let (font, index) = system_fonts::get(&property).unwrap();
+        (font, index.try_into().unwrap())
+    }
+
+    pub fn data_from_properties(family_name: &str, weight: Weight, style: Style) -> (Vec<u8>, u32) {
+        let family_name = Self::normalize_family_name(family_name);
+
+        let mut property = system_fonts::FontPropertyBuilder::new().family(&family_name);
+
+        if weight.to_number() >= 700 {
+            property = property.bold();
+        }
+
+        property = match style {
+            Style::Normal => property,
+            Style::Italic => property.italic(),
+            Style::Oblique => property.oblique(),
         };
 
-        let mut family_names = Vec::new();
-        family_names.push(family_name.clone());
-        let properties = font_kit::properties::Properties::default();
-        let font = self.select_best_match(&family_names, &properties);
-        let face_info = if let Some(font) = font {
-	    // println!("fc font name: {:?}", font.family_name());
-            let postscript_name = font.postscript_name().unwrap_or("?".to_string());
-	    // println!("fc postscript_name: {:?}", postscript_name);
-	    self.select_postscript(postscript_name.as_str())
-        } else {
-            None
-        };
-
-	let family_name = if let Some(info) = face_info {
-	    // println!("ttf-parser font family: {:?}", info.family);
-            Some(info.family.as_str())
-        } else {
-            None
-        };
-
-	family_name
+        let property = property.build();
+        let (font, index) = system_fonts::get(&property).unwrap();
+        (font, index.try_into().unwrap())
     }
 }

@@ -23,18 +23,12 @@ copypasta = "0.8.1"
 image = "0.23.14"
 app_units = "0.7"
 bit-vec = "0.6.3"
-ttf-parser = "0.12.3"
+ttf-parser = "0.17"
 once_cell = "1.16.0"
 tokio = { version = "1.21.2", features = ["rt-multi-thread", "sync", "net", "macros", "time"] }
 futures = "0.3.25"
 winit = "0.27.5"
-
-# font-kit v0.11.0 -> yeslogic-fontconfig-sys has source-fontconfig-dlopen
-# but its conflicted with winit -> sctk-adwaita -> crossfont
-[dependencies.font-kit]
-version = "0.10.0"
-default-features = false
-features = ["source"]
+font-loader = "0.11"
 
 [dependencies.webrender]
 git = "https://github.com/servo/webrender.git"
@@ -49,13 +43,6 @@ rev = "6d5c67923d85f12d3bf0f5e4fbee159772d49572"
 git = "https://github.com/declantsien/surfman.git"
 rev = "682fc7f787432de7b289e4caf4d8e248f85268c9"
 # features = ["sm-winit", "sm-x11"]
-
-[dependencies.fontdb]
-version = "0.10.0"
-default-features = false # do not include the default features, and optionally
-                         # cherry-pick individual features
-features = ["fs", "memmap", "fontconfig"]
-
 
 [build-dependencies]
 cargo_toml = "0.13.0"

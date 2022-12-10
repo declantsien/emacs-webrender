@@ -3,6 +3,8 @@ use std::{cell::RefCell, rc::Rc, sync::Arc};
 use euclid::default::Size2D;
 use gleam::gl;
 use log::warn;
+use std::collections::HashMap;
+
 use std::{
     ops::{Deref, DerefMut},
     ptr,
@@ -30,7 +32,9 @@ use crate::event_loop::WrEventLoop;
 use super::texture::TextureResourceManager;
 use super::util::HandyDandyRectBuilder;
 use super::{cursor::emacs_to_winit_cursor, display_info::DisplayInfoRef};
-use super::{cursor::winit_to_emacs_cursor, font::FontData, font::FontRef};
+use super::{
+    cursor::winit_to_emacs_cursor, font::FontRef, font_db::FontDB, font_db::FontDescriptor,
+};
 
 #[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
 use lisp_types::{bindings::globals, multibyte::LispStringRef};
@@ -41,6 +45,20 @@ pub struct Output {
 
     pub font: FontRef,
     pub fontset: i32,
+
+    fonts: HashMap<FontDescriptor, FontKey>,
+    font_instances: HashMap<
+        (
+            FontKey,
+            FontSize,
+            FontInstanceFlags,
+            Option<ColorU>,
+            SyntheticItalics,
+        ),
+        FontInstanceKey,
+    >,
+    font_render_mode: Option<FontRenderMode>,
+    allow_mipmaps: bool,
 
     pub render_api: RenderApi,
     pub document_id: DocumentId,
@@ -132,6 +150,10 @@ impl Output {
             window,
             font: FontRef::new(ptr::null_mut()),
             fontset: 0,
+            fonts: HashMap::new(),
+            font_instances: HashMap::new(),
+            font_render_mode: None,
+            allow_mipmaps: false,
             render_api: api,
             document_id,
             pipeline_id,
@@ -287,19 +309,19 @@ impl Output {
             f(builder, space_and_clip);
         }
 
-	self.assert_no_gl_error();
+        self.assert_no_gl_error();
     }
 
     fn ensure_context_is_current(&mut self) {
         // Make sure the gl context is made current.
-	if let Err(err) = self.webrender_surfman.make_gl_context_current() {
+        if let Err(err) = self.webrender_surfman.make_gl_context_current() {
             warn!("Failed to make GL context current: {:?}", err);
         }
-	self.assert_no_gl_error();
+        self.assert_no_gl_error();
     }
 
     pub fn flush(&mut self) {
-	self.assert_no_gl_error();
+        self.assert_no_gl_error();
 
         let builder = std::mem::replace(&mut self.display_list_builder, None);
 
@@ -322,7 +344,7 @@ impl Output {
             let device_size = self.get_deivce_size();
 
             // Bind the webrender framebuffer
-	    self.ensure_context_is_current();
+            self.ensure_context_is_current();
 
             let framebuffer_object = self
                 .webrender_surfman
@@ -332,11 +354,11 @@ impl Output {
                 .unwrap_or(0);
             self.gl
                 .bind_framebuffer(gleam::gl::FRAMEBUFFER, framebuffer_object);
-	    self.assert_gl_framebuffer_complete();
+            self.assert_gl_framebuffer_complete();
 
             self.renderer.update();
 
-	    self.assert_no_gl_error();
+            self.assert_no_gl_error();
 
             self.renderer.render(device_size, 0).unwrap();
             let _ = self.renderer.flush_pipeline_info();
@@ -363,8 +385,7 @@ impl Output {
         debug_assert_eq!(
             (
                 self.gl.get_error(),
-                self.gl
-                    .check_frame_buffer_status(gleam::gl::FRAMEBUFFER)
+                self.gl.check_frame_buffer_status(gleam::gl::FRAMEBUFFER)
             ),
             (gleam::gl::NO_ERROR, gleam::gl::FRAMEBUFFER_COMPLETE)
         );
@@ -378,43 +399,98 @@ impl Output {
         let _ = std::mem::replace(&mut self.display_list_builder, None);
     }
 
-    pub fn add_font_instance_by_data(
+    pub fn add_font_instance(
         &mut self,
-        data: FontData,
-        pixel_size: i32,
+        font_key: FontKey,
+        size: f32,
+        flags: FontInstanceFlags,
+        render_mode: Option<FontRenderMode>,
+        bg_color: Option<ColorU>,
+        synthetic_italics: SyntheticItalics,
     ) -> FontInstanceKey {
-        let font_key = self.add_font(data);
-        self.add_font_instance(font_key, pixel_size)
-    }
-
-    pub fn add_font_instance(&mut self, font_key: FontKey, pixel_size: i32) -> FontInstanceKey {
+        let key = self.render_api.generate_font_instance_key();
         let mut txn = Transaction::new();
-
-        let font_instance_key = self.render_api.generate_font_instance_key();
-
-        txn.add_font_instance(
-            font_instance_key,
-            font_key,
-            pixel_size as f32,
-            None,
-            None,
-            vec![],
-        );
-
+        let mut options: FontInstanceOptions = Default::default();
+        options.flags |= flags;
+        if let Some(render_mode) = render_mode {
+            options.render_mode = render_mode;
+        }
+        if let Some(bg_color) = bg_color {
+            options.bg_color = bg_color;
+        }
+        options.synthetic_italics = synthetic_italics;
+        txn.add_font_instance(key, font_key, size, Some(options), None, Vec::new());
         self.render_api.send_transaction(self.document_id, txn);
-        font_instance_key
+        key
     }
 
-    pub fn add_font(&mut self, data: FontData) -> FontKey {
+    #[allow(dead_code)]
+    pub fn delete_font_instance(&mut self, key: FontInstanceKey) {
+        let mut txn = Transaction::new();
+        txn.delete_font_instance(key);
+        self.render_api.send_transaction(self.document_id, txn);
+    }
+
+    pub fn add_font(&mut self, data: (Vec<u8>, u32)) -> FontKey {
         let font_key = self.render_api.generate_font_key();
         let mut txn = Transaction::new();
-        match data {
-            FontData::Raw(ref bytes, index) => txn.add_raw_font(font_key, bytes.clone(), index),
-            FontData::Native(native_font) => txn.add_native_font(font_key, native_font),
-        }
+        let (ref bytes, index) = data;
+        txn.add_raw_font(font_key, bytes.clone(), index);
+
         self.render_api.send_transaction(self.document_id, txn);
 
         font_key
+    }
+
+    pub fn allow_mipmaps(&mut self, allow_mipmaps: bool) {
+        self.allow_mipmaps = allow_mipmaps;
+    }
+
+    pub fn set_font_render_mode(&mut self, render_mode: Option<FontRenderMode>) {
+        self.font_render_mode = render_mode;
+    }
+
+    pub fn get_or_create_font(&mut self, desc: FontDescriptor) -> (FontKey, (Vec<u8>, u32)) {
+        let font_key = self.fonts.get(&desc);
+
+        let font_data = FontDB::data_from_desc(desc.clone());
+        match font_key {
+            Some(key) => (*key, font_data),
+            None => {
+                let key = self.add_font(font_data.clone());
+                self.fonts.insert(desc, key);
+                (key, font_data)
+            }
+        }
+    }
+
+    pub fn get_or_create_font_instance(
+        &mut self,
+        font_key: FontKey,
+        size: f32,
+        bg_color: Option<ColorU>,
+        flags: FontInstanceFlags,
+        synthetic_italics: SyntheticItalics,
+    ) -> FontInstanceKey {
+        let font_render_mode = self.font_render_mode;
+        let hash_map_key = (font_key, size.into(), flags, bg_color, synthetic_italics);
+        let font_instance_key = self.font_instances.get(&hash_map_key);
+        //TODO update font instances
+        match font_instance_key {
+            Some(instance_key) => *instance_key,
+            None => {
+                let instance_key = self.add_font_instance(
+                    font_key,
+                    size,
+                    flags,
+                    font_render_mode,
+                    bg_color,
+                    synthetic_italics,
+                );
+                self.font_instances.insert(hash_map_key, instance_key);
+                instance_key
+            }
+        }
     }
 
     pub fn get_color_bits(&self) -> u8 {
@@ -514,7 +590,7 @@ impl Output {
     }
 
     pub fn deinit(self) {
-	if let Err(err) = self.webrender_surfman.make_gl_context_current() {
+        if let Err(err) = self.webrender_surfman.make_gl_context_current() {
             warn!("Failed to make GL context current: {:?}", err);
         }
         self.renderer.deinit();

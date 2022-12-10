@@ -137,7 +137,7 @@ impl WrEventLoop {
     }
 }
 
-fn build_clipboard(event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
+fn build_clipboard(_event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         if event_loop.is_wayland() {
