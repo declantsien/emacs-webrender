@@ -9,9 +9,9 @@ use webrender::api::*;
 
 use lisp_types::{
     bindings::{
-        debug_print, font, font_driver, font_make_entity, font_make_object, font_metrics,
-        font_property_index, font_style_to_value, frame, glyph_string, intern, Fassoc, Fcons,
-        Fmake_symbol, Fnreverse, FONT_INVALID_CODE,
+        font, font_driver, font_make_entity, font_make_object, font_metrics, font_property_index,
+        font_style_to_value, frame, glyph_string, intern, Fassoc, Fcons, Fmake_symbol, Fnreverse,
+        FONT_INVALID_CODE,
     },
     frame::LispFrameRef,
     globals::{
@@ -123,7 +123,7 @@ extern "C" fn list(frame: *mut frame, font_spec: LispObject) -> LispObject {
 
 extern "C" fn match_(_f: *mut frame, spec: LispObject) -> LispObject {
     // let now = std::time::Instant::now();
-    let desc = FontDescriptor::from_font_spec(spec);
+
     let font_spec = LispFontLike(spec);
     let family_name = font_spec.get_family();
     // println!("match family{:?}:", family_name);
@@ -136,15 +136,18 @@ extern "C" fn match_(_f: *mut frame, spec: LispObject) -> LispObject {
     };
 
     for name in family_names {
-        let (font_data, index) = FontDB::data_from_desc(desc.clone());
-
-        let face = match ttf_parser::Face::parse(&font_data, index as u32) {
-            Ok(f) => f,
-            Err(e) => {
-                eprint!("Error: {}.", e);
-                std::process::exit(1);
-            }
-        };
+        let font_result = FontDB::data_from_name(&name);
+        if font_result.is_none() {
+            println!("font loader error for {:?}", name);
+            continue;
+        }
+        let (font_data, index) = font_result.unwrap();
+        let face_result = ttf_parser::Face::parse(&font_data, index as u32);
+        if face_result.is_err() {
+            println!("ttf_parser error for {:?}", name);
+            continue;
+        }
+        let face = face_result.ok().unwrap();
 
         // let family_name = face
         //     .names()
@@ -219,7 +222,7 @@ extern "C" fn match_(_f: *mut frame, spec: LispObject) -> LispObject {
         entity.aset(font_property_index::FONT_REGISTRY_INDEX, Qiso10646_1);
 
         // set postscript_name
-        let post_script_name = post_script_name.unwrap();
+        let post_script_name = post_script_name.unwrap_or("".to_string());
         let post_script_name: &str = &post_script_name;
         entity.aset(font_property_index::FONT_EXTRA_INDEX, unsafe {
             Fcons(
@@ -335,7 +338,12 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     );
     wr_font.device_pixel_ratio = device_pixel_ratio;
 
-    let (font_key, (font_bytes, face_index)) = output.get_or_create_font(desc);
+    let font_result = output.get_or_create_font(desc.clone());
+    if font_result.is_none() {
+        return Qnil;
+    }
+    let (font_key, (font_bytes, face_index)) = font_result.unwrap();
+
     let bg_color = None;
     let flags = FontInstanceFlags::empty();
     let synthetic_italics = SyntheticItalics::disabled();
@@ -351,13 +359,14 @@ extern "C" fn open_font(frame: *mut frame, font_entity: LispObject, pixel_size: 
     wr_font.font_bytes = ManuallyDrop::new(Rc::new(font_bytes.clone()));
 
     let font_bytes = wr_font.font_bytes.clone();
-    let face = match ttf_parser::Face::parse(&font_bytes, face_index) {
-        Ok(f) => f,
-        Err(e) => {
-            eprint!("Error: {}.", e);
-            std::process::exit(1);
-        }
-    };
+
+    let face_result = ttf_parser::Face::parse(&font_bytes, face_index as u32);
+    if face_result.is_err() {
+        println!("ttf_parser error for {:?}", &desc);
+        return Qnil;
+    }
+    let face = face_result.ok().unwrap();
+
     wr_font.face = face;
 
     let face = &wr_font.face;
@@ -423,11 +432,14 @@ extern "C" fn has_char(font: LispObject, c: i32) -> i32 {
 
         let c = c.unwrap();
 
-        let (font_data, face_index) = FontDB::data_from_desc(desc.clone());
-        ttf_parser::Face::parse(&font_data, face_index)
-            .ok()
-            .and_then(|face| face.glyph_index(c))
-            .is_some() as i32
+        if let Some((font_data, face_index)) = FontDB::data_from_desc(desc.clone()) {
+            ttf_parser::Face::parse(&font_data, face_index.try_into().unwrap())
+                .ok()
+                .and_then(|face| face.glyph_index(c))
+                .is_some() as i32
+        } else {
+            -1
+        }
     } else {
         let font = font.as_font().unwrap().as_font_mut();
 

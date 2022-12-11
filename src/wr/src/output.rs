@@ -399,7 +399,7 @@ impl Output {
         let _ = std::mem::replace(&mut self.display_list_builder, None);
     }
 
-    pub fn add_font_instance(
+    pub fn wr_add_font_instance(
         &mut self,
         font_key: FontKey,
         size: f32,
@@ -425,17 +425,17 @@ impl Output {
     }
 
     #[allow(dead_code)]
-    pub fn delete_font_instance(&mut self, key: FontInstanceKey) {
+    pub fn wr_delete_font_instance(&mut self, key: FontInstanceKey) {
         let mut txn = Transaction::new();
         txn.delete_font_instance(key);
         self.render_api.send_transaction(self.document_id, txn);
     }
 
-    pub fn add_font(&mut self, data: (Vec<u8>, u32)) -> FontKey {
+    pub fn wr_add_font(&mut self, data: (Vec<u8>, i32)) -> FontKey {
         let font_key = self.render_api.generate_font_key();
         let mut txn = Transaction::new();
         let (ref bytes, index) = data;
-        txn.add_raw_font(font_key, bytes.clone(), index);
+        txn.add_raw_font(font_key, bytes.clone(), index.try_into().unwrap());
 
         self.render_api.send_transaction(self.document_id, txn);
 
@@ -450,17 +450,23 @@ impl Output {
         self.font_render_mode = render_mode;
     }
 
-    pub fn get_or_create_font(&mut self, desc: FontDescriptor) -> (FontKey, (Vec<u8>, u32)) {
+    pub fn get_or_create_font(
+        &mut self,
+        desc: FontDescriptor,
+    ) -> Option<(FontKey, (Vec<u8>, i32))> {
         let font_key = self.fonts.get(&desc);
 
-        let font_data = FontDB::data_from_desc(desc.clone());
-        match font_key {
-            Some(key) => (*key, font_data),
-            None => {
-                let key = self.add_font(font_data.clone());
-                self.fonts.insert(desc, key);
-                (key, font_data)
+        if let Some(font_data) = FontDB::data_from_desc(desc.clone()) {
+            match font_key {
+                Some(key) => Some((*key, font_data)),
+                None => {
+                    let key = self.wr_add_font(font_data.clone());
+                    self.fonts.insert(desc, key);
+                    Some((key, font_data))
+                }
             }
+        } else {
+            None
         }
     }
 
@@ -479,7 +485,7 @@ impl Output {
         match font_instance_key {
             Some(instance_key) => *instance_key,
             None => {
-                let instance_key = self.add_font_instance(
+                let instance_key = self.wr_add_font_instance(
                     font_key,
                     size,
                     flags,

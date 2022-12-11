@@ -1,5 +1,6 @@
 use font_loader::system_fonts;
 
+use libc::c_int;
 use lisp_types::{
     bindings::{font_property_index, xlispstrdup, AREF, SYMBOL_NAME},
     lisp::LispObject,
@@ -9,11 +10,6 @@ use std::str;
 use std::{ffi::CStr, fs::File, io::Read};
 use ttf_parser::{Style, Weight};
 
-// pub const PLATFORM_DEFAULT_FACE_NAME: &str = "Courier New";
-
-// TODO(gw): This descriptor matches what we currently support for fonts
-//           but is quite a mess. We should at least document and
-//           use better types for things like the style and stretch.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum FontDescriptor {
     Path {
@@ -89,7 +85,7 @@ impl FontDB {
         }
     }
 
-    pub fn data_from_desc(desc: FontDescriptor) -> (Vec<u8>, u32) {
+    pub fn data_from_desc(desc: FontDescriptor) -> Option<(Vec<u8>, c_int)> {
         // println!("desc: {:?}", desc);
         match desc {
             FontDescriptor::Path {
@@ -100,7 +96,7 @@ impl FontDB {
                 let mut bytes = vec![];
                 file.read_to_end(&mut bytes)
                     .expect("failed to read font file");
-                (bytes, font_index.try_into().unwrap())
+                Some((bytes, font_index.try_into().unwrap()))
             }
             FontDescriptor::Family { ref name } => FontDB::data_from_name(name),
             FontDescriptor::Properties {
@@ -112,16 +108,19 @@ impl FontDB {
         }
     }
 
-    pub fn data_from_name(family_name: &str) -> (Vec<u8>, u32) {
+    pub fn data_from_name(family_name: &str) -> Option<(Vec<u8>, c_int)> {
         let family_name = Self::normalize_family_name(family_name);
         let property = system_fonts::FontPropertyBuilder::new()
             .family(&family_name)
             .build();
-        let (font, index) = system_fonts::get(&property).unwrap();
-        (font, index.try_into().unwrap())
+        system_fonts::get(&property)
     }
 
-    pub fn data_from_properties(family_name: &str, weight: Weight, style: Style) -> (Vec<u8>, u32) {
+    pub fn data_from_properties(
+        family_name: &str,
+        weight: Weight,
+        style: Style,
+    ) -> Option<(Vec<u8>, c_int)> {
         let family_name = Self::normalize_family_name(family_name);
 
         let mut property = system_fonts::FontPropertyBuilder::new().family(&family_name);
@@ -137,7 +136,15 @@ impl FontDB {
         };
 
         let property = property.build();
-        let (font, index) = system_fonts::get(&property).unwrap();
-        (font, index.try_into().unwrap())
+        match system_fonts::get(&property) {
+            Some(result) => Some(result),
+            None => {
+                eprint!(
+                    "Failed loading font: {:?}, weight: {:?}, style: {:?}.",
+                    family_name, weight, style
+                );
+                None
+            }
+        }
     }
 }
