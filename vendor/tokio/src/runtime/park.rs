@@ -2,7 +2,6 @@
 
 use crate::loom::sync::atomic::AtomicUsize;
 use crate::loom::sync::{Arc, Condvar, Mutex};
-use crate::park::{Park, Unpark};
 
 use std::sync::atomic::Ordering::SeqCst;
 use std::time::Duration;
@@ -11,8 +10,6 @@ use std::time::Duration;
 pub(crate) struct ParkThread {
     inner: Arc<Inner>,
 }
-
-pub(crate) type ParkError = ();
 
 /// Unblocks a thread that was blocked by `ParkThread`.
 #[derive(Clone, Debug)]
@@ -31,8 +28,14 @@ const EMPTY: usize = 0;
 const PARKED: usize = 1;
 const NOTIFIED: usize = 2;
 
-thread_local! {
+tokio_thread_local! {
     static CURRENT_PARKER: ParkThread = ParkThread::new();
+}
+
+// Bit of a hack, but it is only for loom
+#[cfg(loom)]
+tokio_thread_local! {
+    static CURRENT_THREAD_PARK_COUNT: AtomicUsize = AtomicUsize::new(0);
 }
 
 // ==== impl ParkThread ====
@@ -47,32 +50,30 @@ impl ParkThread {
             }),
         }
     }
-}
 
-impl Park for ParkThread {
-    type Unpark = UnparkThread;
-    type Error = ParkError;
-
-    fn unpark(&self) -> Self::Unpark {
+    pub(crate) fn unpark(&self) -> UnparkThread {
         let inner = self.inner.clone();
         UnparkThread { inner }
     }
 
-    fn park(&mut self) -> Result<(), Self::Error> {
+    pub(crate) fn park(&mut self) {
+        #[cfg(loom)]
+        CURRENT_THREAD_PARK_COUNT.with(|count| count.fetch_add(1, SeqCst));
         self.inner.park();
-        Ok(())
     }
 
-    fn park_timeout(&mut self, duration: Duration) -> Result<(), Self::Error> {
+    pub(crate) fn park_timeout(&mut self, duration: Duration) {
+        #[cfg(loom)]
+        CURRENT_THREAD_PARK_COUNT.with(|count| count.fetch_add(1, SeqCst));
+
         // Wasm doesn't have threads, so just sleep.
         #[cfg(not(tokio_wasm))]
         self.inner.park_timeout(duration);
         #[cfg(tokio_wasm)]
         std::thread::sleep(duration);
-        Ok(())
     }
 
-    fn shutdown(&mut self) {
+    pub(crate) fn shutdown(&mut self) {
         self.inner.shutdown();
     }
 }
@@ -212,12 +213,13 @@ impl Default for ParkThread {
 
 // ===== impl UnparkThread =====
 
-impl Unpark for UnparkThread {
-    fn unpark(&self) {
+impl UnparkThread {
+    pub(crate) fn unpark(&self) {
         self.inner.unpark();
     }
 }
 
+use crate::loom::thread::AccessError;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::mem;
@@ -241,58 +243,54 @@ impl CachedParkThread {
         }
     }
 
-    pub(crate) fn get_unpark(&self) -> Result<UnparkThread, ParkError> {
+    pub(crate) fn waker(&self) -> Result<Waker, AccessError> {
+        self.unpark().map(|unpark| unpark.into_waker())
+    }
+
+    fn unpark(&self) -> Result<UnparkThread, AccessError> {
         self.with_current(|park_thread| park_thread.unpark())
     }
 
+    pub(crate) fn park(&mut self) {
+        self.with_current(|park_thread| park_thread.inner.park())
+            .unwrap();
+    }
+
+    pub(crate) fn park_timeout(&mut self, duration: Duration) {
+        self.with_current(|park_thread| park_thread.inner.park_timeout(duration))
+            .unwrap();
+    }
+
     /// Gets a reference to the `ParkThread` handle for this thread.
-    fn with_current<F, R>(&self, f: F) -> Result<R, ParkError>
+    fn with_current<F, R>(&self, f: F) -> Result<R, AccessError>
     where
         F: FnOnce(&ParkThread) -> R,
     {
-        CURRENT_PARKER.try_with(|inner| f(inner)).map_err(|_| ())
+        CURRENT_PARKER.try_with(|inner| f(inner))
     }
 
-    pub(crate) fn block_on<F: Future>(&mut self, f: F) -> Result<F::Output, ParkError> {
+    pub(crate) fn block_on<F: Future>(&mut self, f: F) -> Result<F::Output, AccessError> {
         use std::task::Context;
         use std::task::Poll::Ready;
 
         // `get_unpark()` should not return a Result
-        let waker = self.get_unpark()?.into_waker();
+        let waker = self.waker()?;
         let mut cx = Context::from_waker(&waker);
 
         pin!(f);
 
         loop {
-            if let Ready(v) = crate::coop::budget(|| f.as_mut().poll(&mut cx)) {
+            if let Ready(v) = crate::runtime::coop::budget(|| f.as_mut().poll(&mut cx)) {
                 return Ok(v);
             }
 
-            self.park()?;
+            // Wake any yielded tasks before parking in order to avoid
+            // blocking.
+            #[cfg(feature = "rt")]
+            crate::runtime::context::with_defer(|defer| defer.wake());
+
+            self.park();
         }
-    }
-}
-
-impl Park for CachedParkThread {
-    type Unpark = UnparkThread;
-    type Error = ParkError;
-
-    fn unpark(&self) -> Self::Unpark {
-        self.get_unpark().unwrap()
-    }
-
-    fn park(&mut self) -> Result<(), Self::Error> {
-        self.with_current(|park_thread| park_thread.inner.park())?;
-        Ok(())
-    }
-
-    fn park_timeout(&mut self, duration: Duration) -> Result<(), Self::Error> {
-        self.with_current(|park_thread| park_thread.inner.park_timeout(duration))?;
-        Ok(())
-    }
-
-    fn shutdown(&mut self) {
-        let _ = self.with_current(|park_thread| park_thread.inner.shutdown());
     }
 }
 
@@ -347,4 +345,9 @@ unsafe fn wake_by_ref(raw: *const ()) {
 
     // We don't actually own a reference to the unparker
     mem::forget(unparker);
+}
+
+#[cfg(loom)]
+pub(crate) fn current_thread_park_count() -> usize {
+    CURRENT_THREAD_PARK_COUNT.with(|count| count.load(SeqCst))
 }
