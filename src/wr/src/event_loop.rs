@@ -225,7 +225,8 @@ pub extern "C" fn wr_select(
     let (select_stop_sender, mut select_stop_receiver) = tokio::sync::mpsc::unbounded_channel();
 
     // use tokio to mimic the pselect because it has cross platform supporting.
-    TOKIO_RUNTIME.lock().unwrap().spawn(async move {
+    let tokio_runtime = TOKIO_RUNTIME.lock().unwrap();
+    tokio_runtime.spawn(async move {
         tokio::select! {
             (readables, writables) = tokio_select_fds(nfds, &read_fds , &write_fds) => {
                 let nfds = readables.len() + writables.len();
@@ -304,7 +305,13 @@ fn fd_set_to_async_fds(nfds: i32, fds: &FdSet) -> Vec<AsyncFd<i32>> {
     for fd in 0..nfds {
         unsafe {
             if libc::FD_ISSET(fd, fds.0) {
-                async_fds.push(AsyncFd::new(fd).unwrap())
+                let async_fd_result = AsyncFd::new(fd);
+                if async_fd_result.is_err() {
+                    println!("AsyncFd err: {:?}", async_fd_result.unwrap_err());
+                    continue;
+                }
+
+                async_fds.push(async_fd_result.unwrap())
             }
         }
     }
