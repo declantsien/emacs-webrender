@@ -14,7 +14,7 @@ use copypasta::{
 use futures::future::FutureExt;
 use libc::{c_void, fd_set, pselect, sigset_t, timespec};
 use once_cell::sync::Lazy;
-use tokio::{io::unix::AsyncFd, runtime::Runtime, time::Duration};
+use tokio::{io::unix::AsyncFd, io::Interest, runtime::Runtime, time::Duration};
 #[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
 use winit::platform::unix::EventLoopWindowTargetExtUnix;
 use winit::{
@@ -305,9 +305,16 @@ fn fd_set_to_async_fds(nfds: i32, fds: &FdSet) -> Vec<AsyncFd<i32>> {
     for fd in 0..nfds {
         unsafe {
             if libc::FD_ISSET(fd, fds.0) {
-                let async_fd_result = AsyncFd::new(fd);
+                // let fd = fd.as_raw_fd();
+                // let interest = match (fd.is_read, fd.) {
+                //     (true, true) | (false, false) => ALL_INTEREST,
+                //     (true, false) => mio::Interest::READABLE,
+                //     (false, true) => mio::Interest::WRITABLE,
+                // };
+                let async_fd_result = AsyncFd::with_interest(fd, Interest::READABLE);
                 if async_fd_result.is_err() {
                     println!("AsyncFd err: {:?}", async_fd_result.unwrap_err());
+                    // println!("{:?} {:?}", event, std::thread::current().id());
                     continue;
                 }
 
