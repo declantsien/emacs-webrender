@@ -34,7 +34,7 @@ use lisp_types::{
     frame::{all_frames, window_frame_live_or_selected, LispFrameRef},
     globals::{
         Qbackground_color, Qfont, Qfont_backend, Qforeground_color, Qleft_fringe, Qminibuffer,
-        Qname, Qnil, Qparent_id, Qright_fringe, Qterminal, Qunbound, Qx_create_frame_1,
+        Qname, Qnil, Qparent_id, Qright_fringe, Qt, Qterminal, Qunbound, Qx_create_frame_1,
         Qx_create_frame_2,
     },
     lisp::{ExternalPtr, LispObject},
@@ -218,8 +218,8 @@ pub extern "C" fn image_pixmap_draw_cross(
 /// Hide the current tooltip window, if there is any.
 /// Value is t if tooltip was open, nil otherwise.
 #[lisp_fn]
-pub fn x_hide_tip() -> bool {
-    false
+pub fn x_hide_tip() -> LispObject {
+    Qnil
 }
 
 /// Make a new X window, which is called a "frame" in Emacs terms.
@@ -447,9 +447,9 @@ pub fn x_open_connection(
 
 /// Internal function called by `display-color-p', which see.
 #[lisp_fn(min = "0")]
-pub fn xw_display_color_p(_terminal: LispObject) -> bool {
+pub fn xw_display_color_p(_terminal: LispObject) -> LispObject {
     // webrender support color display
-    true
+    Qt
 }
 
 /// Return t if the X display supports shades of gray.
@@ -458,9 +458,9 @@ pub fn xw_display_color_p(_terminal: LispObject) -> bool {
 /// TERMINAL should be a terminal object, a frame or a display name (a string).
 /// If omitted or nil, that stands for the selected frame's display.
 #[lisp_fn(min = "0")]
-pub fn x_display_grayscale_p(_terminal: LispObject) -> bool {
+pub fn x_display_grayscale_p(_terminal: LispObject) -> LispObject {
     // webrender support shades of gray
-    true
+    Qt
 }
 
 /// Internal function called by `color-values', which see.
@@ -701,7 +701,7 @@ pub fn x_display_monitor_attributes_list(_terminal: LispObject) -> LispObject {
 /// physical monitors associated with TERMINAL.  To get information for
 /// each physical monitor, use `display-monitor-attributes-list'.
 #[lisp_fn(min = "0")]
-pub fn x_display_pixel_width(_terminal: LispObject) -> i32 {
+pub fn x_display_pixel_width(_terminal: LispObject) -> LispObject {
     let event_loop = EVENT_LOOP.lock().unwrap();
 
     let primary_monitor = event_loop.get_primary_monitor();
@@ -711,7 +711,7 @@ pub fn x_display_pixel_width(_terminal: LispObject) -> i32 {
     let physical_size = primary_monitor.size();
     let logical_size = physical_size.to_logical::<i32>(dpi_factor);
 
-    logical_size.width
+    unsafe { make_fixnum(logical_size.width as i64) }
 }
 
 /// Return the height in pixels of the X display TERMINAL.
@@ -724,7 +724,7 @@ pub fn x_display_pixel_width(_terminal: LispObject) -> i32 {
 /// physical monitors associated with TERMINAL.  To get information for
 /// each physical monitor, use `display-monitor-attributes-list'.
 #[lisp_fn(min = "0")]
-pub fn x_display_pixel_height(_terminal: LispObject) -> i32 {
+pub fn x_display_pixel_height(_terminal: LispObject) -> LispObject {
     let event_loop = EVENT_LOOP.lock().unwrap();
 
     let primary_monitor = event_loop.get_primary_monitor();
@@ -734,7 +734,7 @@ pub fn x_display_pixel_height(_terminal: LispObject) -> i32 {
     let physical_size = primary_monitor.size();
     let logical_size = physical_size.to_logical::<i32>(dpi_factor);
 
-    logical_size.height
+    unsafe { make_fixnum(logical_size.height as i64) }
 }
 
 /// Assert an X selection of type SELECTION and value VALUE.

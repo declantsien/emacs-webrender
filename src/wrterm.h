@@ -174,4 +174,7 @@ extern void syms_of_wrterm(void);
 extern void syms_of_wrterm_rust(void);
 extern void syms_of_wrfns (void);
 
+EXFUN (Fxw_display_color_p, 1);
+EXFUN (Fx_display_grayscale_p, 1);
+
 #endif // __WRTERM_H_
