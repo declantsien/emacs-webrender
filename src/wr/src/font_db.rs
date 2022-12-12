@@ -1,8 +1,8 @@
 use font_loader::system_fonts;
 
-use libc::c_int;
+use libc::{c_int, c_void};
 use lisp_types::{
-    bindings::{font_property_index, xlispstrdup, AREF, SYMBOL_NAME},
+    bindings::{font_property_index, xfree, xlispstrdup, AREF, SYMBOL_NAME},
     lisp::LispObject,
 };
 use std::path::PathBuf;
@@ -36,11 +36,16 @@ impl FontDescriptor {
             )
         };
         // unsafe{ debug_print(font_spec)};
-        let family = unsafe { xlispstrdup(SYMBOL_NAME(family)) };
-        let family: &CStr = unsafe { CStr::from_ptr(family) };
-        let family: &str = family.to_str().unwrap();
-        let family: String = family.to_owned();
+        let family = {
+	    let tem = unsafe { xlispstrdup(SYMBOL_NAME(family)) };
+            let family: &CStr = unsafe { CStr::from_ptr(tem) };
+            let family: &str = family.to_str().unwrap();
+            let family: String = family.to_owned();
+            unsafe { xfree(tem as *mut c_void) };
+	    family
+	};
         let family = family.replace(" Regular", "");
+
         // println!("family: {:?}", family);
 
         //TODO Read weight/style/stretch
