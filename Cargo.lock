@@ -1120,16 +1120,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
-name = "font-loader"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c49d6b4c11dca1a1dd931a34a9f397e2da91abe3de4110505f3530a80e560b52"
+name = "fontdb"
+version = "0.10.0"
+source = "git+https://github.com/declantsien/fontdb.git?rev=5511de6256d42880a37351a100fc81b015203f25#5511de6256d42880a37351a100fc81b015203f25"
 dependencies = [
- "core-foundation 0.9.3",
- "core-text",
- "libc",
- "servo-fontconfig",
- "winapi",
+ "log",
+ "memmap2",
+ "ttf-parser",
 ]
 
 [[package]]
@@ -3849,7 +3846,7 @@ dependencies = [
  "copypasta",
  "core-foundation 0.9.3",
  "env_logger 0.9.3",
- "font-loader",
+ "fontdb",
  "futures",
  "gleam 0.13.1",
  "image",

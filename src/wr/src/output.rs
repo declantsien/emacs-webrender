@@ -431,11 +431,15 @@ impl Output {
         self.render_api.send_transaction(self.document_id, txn);
     }
 
-    pub fn wr_add_font(&mut self, data: (Vec<u8>, i32)) -> FontKey {
+    pub fn wr_add_font(&mut self, data: FontTemplate) -> FontKey {
         let font_key = self.render_api.generate_font_key();
         let mut txn = Transaction::new();
-        let (ref bytes, index) = data;
-        txn.add_raw_font(font_key, bytes.clone(), index.try_into().unwrap());
+        match data {
+            FontTemplate::Raw(ref bytes, index) => {
+                txn.add_raw_font(font_key, bytes.to_vec(), index)
+            }
+            FontTemplate::Native(native_font) => txn.add_native_font(font_key, native_font),
+        }
 
         self.render_api.send_transaction(self.document_id, txn);
 
@@ -452,22 +456,65 @@ impl Output {
 
     pub fn get_or_create_font(
         &mut self,
+        font_db: &FontDB,
         desc: FontDescriptor,
-    ) -> Option<(FontKey, (Vec<u8>, i32))> {
-        let font_key = self.fonts.get(&desc);
+    ) -> Option<(FontKey, FontTemplate)> {
+        let result = font_db.font_from_desc(desc.clone());
 
-        if let Some(font_data) = FontDB::data_from_desc(desc.clone()) {
-            match font_key {
-                Some(key) => Some((*key, font_data)),
-                None => {
-                    let key = self.wr_add_font(font_data.clone());
-                    self.fonts.insert(desc, key);
-                    Some((key, font_data))
+        if result.is_none() {
+            return None;
+        }
+
+        let font = result.unwrap();
+
+        let result = font_db.db.with_face_data(font.id, |font_data, face_index| {
+            let font_bytes = Rc::new(font_data.to_vec());
+            (font_bytes, face_index)
+        });
+
+        if result.is_none() {
+            return None;
+        }
+
+        let (font_bytes, face_index) = result.unwrap();
+
+        let font_template_raw = FontTemplate::Raw(
+            Arc::new(font_bytes.to_vec()),
+            face_index.try_into().unwrap(),
+        );
+
+        let wr_font_key = self.fonts.get(&desc);
+
+        if let Some(key) = wr_font_key {
+            return Some((*key, font_template_raw));
+        }
+
+        let wr_font_key = {
+            #[cfg(target_os = "macos")]
+            {
+                let family_name = font.family.iter().find(|family| family.is_ascii());
+
+                if let Some(name) = family_name {
+                    // println!("Family: {:?}", &family_name);
+                    let key = self.wr_add_font(FontTemplate::Native(NativeFontHandle {
+                        name: name.to_owned(),
+                    }));
+                    Some(key)
+                } else {
+                    None
                 }
             }
-        } else {
-            None
-        }
+
+            #[cfg(not(target_os = "macos"))]
+            Some(self.wr_add_font(font_template_raw))
+        };
+
+        if let Some(key) = wr_font_key {
+            self.fonts.insert(desc, key);
+            return Some((key, font_template_raw));
+        };
+
+        None
     }
 
     pub fn get_or_create_font_instance(
