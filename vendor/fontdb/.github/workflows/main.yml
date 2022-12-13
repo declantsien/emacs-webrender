@@ -1,0 +1,37 @@
+name: Rust
+
+on: [push, pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - 1.42.0
+          - stable
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: ${{ matrix.rust }}
+        override: true
+
+    - name: Build without default features
+      run: cargo build --no-default-features
+
+    - name: Build with fs
+      run: cargo build --no-default-features --features fs
+
+    - name: Build with memmap
+      run: cargo build --no-default-features --features memmap
+
+    - name: Run tests
+      run: cargo test

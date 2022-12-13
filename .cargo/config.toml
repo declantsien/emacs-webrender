@@ -1,6 +1,11 @@
 [source.crates-io]
 replace-with = "vendored-sources"
 
+[source."https://github.com/declantsien/fontdb.git"]
+git = "https://github.com/declantsien/fontdb.git"
+rev = "7add541d71b8dd9432c8ac6b2616e27da9134d7c"
+replace-with = "vendored-sources"
+
 [source."https://github.com/declantsien/surfman-chains.git"]
 git = "https://github.com/declantsien/surfman-chains.git"
 rev = "df8d9ed04f516873f8e6ad7446a233238d783694"
