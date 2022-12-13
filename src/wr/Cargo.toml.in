@@ -53,7 +53,7 @@ core-foundation = "0.9.2"
 
 [features]
 default = ["wayland", @WR_CARGO_FEATURES@]
-x11 = ["copypasta/x11", "surfman/sm-x11"]
-wayland = ["copypasta/wayland"]
+x11 = ["copypasta/x11", "surfman/sm-x11", "fontdb/fontconfig"]
+wayland = ["copypasta/wayland", "fontdb/fontconfig"]
 capture=["webrender/capture", "webrender/serialize_program"]
 sw_compositor=["webrender/sw_compositor"]

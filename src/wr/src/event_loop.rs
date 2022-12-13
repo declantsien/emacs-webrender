@@ -140,8 +140,8 @@ impl WrEventLoop {
 fn build_clipboard(_event_loop: &EventLoop<i32>) -> Box<dyn ClipboardProvider> {
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        if event_loop.is_wayland() {
-            let wayland_display = event_loop
+        if _event_loop.is_wayland() {
+            let wayland_display = _event_loop
                 .wayland_display()
                 .expect("Fetch Wayland display failed");
             let (_, clipboard) = unsafe { create_clipboards_from_external(wayland_display) };

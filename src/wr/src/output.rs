@@ -509,7 +509,7 @@ impl Output {
             }
 
             #[cfg(not(target_os = "macos"))]
-            Some(self.wr_add_font(font_template_raw))
+            Some(self.wr_add_font(font_template_raw.clone()))
         };
 
         if let Some(key) = wr_font_key {
