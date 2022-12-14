@@ -340,45 +340,54 @@ impl Database {
         {
             #[cfg(feature = "fontconfig")]
             {
+                use std::env;
+                use std::path::Path;
+                use std::path::PathBuf;
+
                 let mut fontconfig = fontconfig_parser::FontConfig::default();
 
-                let mut config_files = vec![
-                    std::path::PathBuf::from("/etc/fonts/fonts.conf"),
-                    std::path::PathBuf::from("/etc/fonts/fonts.dtd"),
-                    std::path::PathBuf::from("/etc/fonts/conf.d"),
-                ];
-                if let Ok(ref xdg_config_home) = std::env::var("XDG_CONFIG_HOME") {
-                    let xdg_config_home = std::path::Path::new(xdg_config_home);
-                    config_files.push(xdg_config_home.join("fontconfig/fonts.conf"));
-                    config_files.push(xdg_config_home.join("fontconfig/conf.d"));
-                }
-                if let Ok(ref home) = std::env::var("HOME") {
-                    let home = std::path::Path::new(home);
-                    config_files.push(home.join(".fonts.conf.d"));
-                    config_files.push(home.join(".fonts.conf"));
+                let mut config_files = vec![];
+                if let Ok(ref config_file) = env::var("FONTCONFIG_FILE") {
+                    config_files.push(PathBuf::from(config_file));
+                } else {
+                    if let Ok(ref xdg_config_home) = env::var("XDG_CONFIG_HOME") {
+                        let xdg_config_home = Path::new(xdg_config_home);
+                        config_files.push(xdg_config_home.join("fontconfig/fonts.conf"));
+                    } else {
+                        config_files.push(PathBuf::from("/etc/fonts/local.conf"));
+                    }
+                    config_files.push(PathBuf::from("/etc/fonts/fonts.conf"));
                 }
 
                 for path in config_files.iter() {
-                    if path.is_file() {
-                        fontconfig.merge_config(&path).ok();
-                        continue;
-                    }
-                    if let Ok(dir) = std::fs::read_dir(path) {
-                        for entry in dir {
-                            if let Ok(entry) = entry {
-                                let path = entry.path();
-                                if path.is_file() {
-                                    fontconfig.merge_config(&path).ok();
-                                }
-                            }
+                    fontconfig.merge_config(&path).ok();
+                }
+
+                for fontconfig_parser::Alias {
+                    alias,
+                    default,
+                    prefer,
+                    accept,
+                } in fontconfig.aliases
+                {
+                    let names = [&prefer[..], &default[..], &accept[..]].concat();
+                    if let Some(name) = names.get(0) {
+                        match alias.clone().to_lowercase().as_str() {
+                            "serif" => self.set_serif_family(name),
+                            "sans-serif" => self.set_sans_serif_family(name),
+                            "sans serif" => self.set_sans_serif_family(name),
+                            "monospace" => self.set_monospace_family(name),
+                            "cursive" => self.set_cursive_family(name),
+                            "fantasy" => self.set_fantasy_family(name),
+                            _ => {}
                         }
                     }
                 }
 
                 for dir in fontconfig.dirs {
                     let path = if dir.path.starts_with("~") {
-                        if let Ok(ref home) = std::env::var("HOME") {
-                            let home_path = std::path::Path::new(home);
+                        if let Ok(ref home) = env::var("HOME") {
+                            let home_path = Path::new(home);
                             home_path.join(dir.path.strip_prefix("~").unwrap())
                         } else {
                             continue;
@@ -390,13 +399,16 @@ impl Database {
                 }
             }
 
-            self.load_fonts_dir("/usr/share/fonts/");
-            self.load_fonts_dir("/usr/local/share/fonts/");
+            #[cfg(not(feature = "fontconfig"))]
+            {
+                self.load_fonts_dir("/usr/share/fonts/");
+                self.load_fonts_dir("/usr/local/share/fonts/");
 
-            if let Ok(ref home) = std::env::var("HOME") {
-                let home_path = std::path::Path::new(home);
-                self.load_fonts_dir(home_path.join(".fonts"));
-                self.load_fonts_dir(home_path.join(".local/share/fonts"));
+                if let Ok(ref home) = std::env::var("HOME") {
+                    let home_path = std::path::Path::new(home);
+                    self.load_fonts_dir(home_path.join(".fonts"));
+                    self.load_fonts_dir(home_path.join(".local/share/fonts"));
+                }
             }
         }
     }

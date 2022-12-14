@@ -3,7 +3,7 @@ replace-with = "vendored-sources"
 
 [source."https://github.com/declantsien/fontdb.git"]
 git = "https://github.com/declantsien/fontdb.git"
-rev = "7add541d71b8dd9432c8ac6b2616e27da9134d7c"
+rev = "ae6f3e48726cad8c0471848590d0df05b5138105"
 replace-with = "vendored-sources"
 
 [source."https://github.com/declantsien/surfman-chains.git"]
