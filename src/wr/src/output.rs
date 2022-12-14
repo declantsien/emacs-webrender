@@ -492,9 +492,6 @@ impl Output {
         let wr_font_key = {
             #[cfg(target_os = "macos")]
             {
-		//MAYBE: directly get face raw_table using ttf_parse
-		//then send to wr with FontTemplate::Raw(face_bytes, 0)
-		//maybe for all platforms
                 let family_name = font.family.iter().find(|family| family.is_ascii());
 
                 if let Some(name) = family_name {
