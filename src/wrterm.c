@@ -1,6 +1,7 @@
 #include <config.h>
 #include "term.h"
 #include "lisp.h"
+#include "wrterm.h"
 
 void
 syms_of_wrterm (void)

@@ -176,5 +176,6 @@ extern void syms_of_wrfns (void);
 
 EXFUN (Fxw_display_color_p, 1);
 EXFUN (Fx_display_grayscale_p, 1);
+EXFUN (Fx_hide_tip, 0);
 
 #endif // __WRTERM_H_
