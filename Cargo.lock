@@ -1131,7 +1131,7 @@ dependencies = [
 [[package]]
 name = "fontdb"
 version = "0.10.0"
-source = "git+https://github.com/declantsien/fontdb.git?rev=ae6f3e48726cad8c0471848590d0df05b5138105#ae6f3e48726cad8c0471848590d0df05b5138105"
+source = "git+https://github.com/declantsien/fontdb.git?branch=emacs-wr#9a9f6321a173e120aa4883d382084a2118b0714f"
 dependencies = [
  "fontconfig-parser",
  "log",

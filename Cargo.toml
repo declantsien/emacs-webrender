@@ -35,4 +35,4 @@ winit = { git = "https://github.com/declantsien/winit", rev="d80de2ea150a36d078b
 
 [patch.crates-io.fontdb]
 git = "https://github.com/declantsien/fontdb.git"
-rev="ae6f3e48726cad8c0471848590d0df05b5138105"
+branch = "emacs-wr"
