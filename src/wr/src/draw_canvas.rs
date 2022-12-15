@@ -227,10 +227,10 @@ impl DrawCanvas {
     fn draw_image_glyph(&mut self, mut s: GlyphStringRef) {
         let wr_pixmap = unsafe { (*s.img).pixmap } as *mut WrPixmap;
 
-	// TODO null pixmap? 0x0
-	if wr_pixmap.is_null() {
-	    return
-	}
+        // TODO null pixmap? 0x0
+        if wr_pixmap.is_null() {
+            return;
+        }
 
         let image_key = unsafe { (*wr_pixmap).image_key };
 
@@ -381,7 +381,7 @@ impl DrawCanvas {
                 }
             });
         } else {
-            unimplemented!();
+            eprint!("TODO unimplemented! draw_composite_glyph_string.\n");
         }
     }
 
