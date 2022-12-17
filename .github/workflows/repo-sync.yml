@@ -1,0 +1,23 @@
+# File: .github/workflows/repo-sync.yml
+
+name: Sync repo
+on:
+  schedule:
+    - cron:  "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        persist-credentials: false
+    - name: repo-sync
+      uses: repo-sync/github-sync@v2
+      with:
+        source_repo: "https://git.sr.ht/~declantsien/emacs-wr"
+        sync_tags: "true"
+        source_branch: "*"
+        destination_branch: "*"
+        github_token: ${{ secrets.PAT }}
