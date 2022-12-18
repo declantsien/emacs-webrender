@@ -566,6 +566,11 @@ AC_ARG_ENABLE([ns-self-contained],
    [EN_NS_SELF_CONTAINED=$enableval],
    [EN_NS_SELF_CONTAINED=yes])
 
+AC_ARG_ENABLE(wr-self-contained,
+[AS_HELP_STRING([--enable-wr-self-contained],
+                [enable self contained Webrender build under macOS])],
+                EN_NS_SELF_CONTAINED=$enableval)
+
 locallisppathset=no
 AC_ARG_ENABLE([locallisppath],
 [AS_HELP_STRING([--enable-locallisppath=PATH],
@@ -1965,6 +1970,42 @@ if test "${with_pgtk}" = "yes"; then
   window_system=pgtk
 fi
 
+
+HAVE_WR=no
+HAVE_WR_NS=no
+if test "${with_wr}" = "yes"; then
+   with_x=no
+   with_ns=no
+
+   if test "${window_system}" = "none"; then
+     window_system=wr
+   else
+     AS_VAR_APPEND([alternative_window_systems], [wr])
+   fi
+   HAVE_WR=yes
+
+   case $opsys in
+     cygwin|mingw32) ;;
+     darwin) HAVE_WR_NS=yes ;;
+     *) ;;
+   esac
+
+   AC_DEFINE(HAVE_WR, 1,
+      [Define to 1 if you want to use the webrender.])
+
+fi
+AC_SUBST([HAVE_WR])
+AC_SUBST([HAVE_WR_NS])
+
+if test "${HAVE_WR_NS}" = yes; then
+     ns_appdir=`pwd`/nextstep/Emacs.app
+     ns_appbindir=${ns_appdir}/Contents/MacOS
+     ns_applibexecdir=${ns_appdir}/Contents/MacOS/libexec
+     ns_applibdir=${ns_appdir}/Contents/Frameworks
+     ns_appresdir=${ns_appdir}/Contents/Resources
+     ns_appsrc=Cocoa/Emacs.base
+fi
+
 AC_PATH_X
 if test "$no_x" != yes && test "${with_pgtk}" != "yes"; then
   window_system=x11
@@ -2171,6 +2212,10 @@ if test "${HAVE_NS}" = yes; then
   fi
 
   window_system=nextstep
+  NS_OBJC_OBJ="nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o $ns_fontfile"
+fi
+
+if test "${HAVE_NS}" = yes || test "${HAVE_WR_NS}" = yes; then
   # set up packaging dirs
   if test "${EN_NS_SELF_CONTAINED}" = yes; then
      AC_DEFINE([NS_SELF_CONTAINED], [1], [Build an NS bundled app])
@@ -2191,8 +2236,6 @@ if test "${HAVE_NS}" = yes; then
      test "$locallisppathset" = no && locallisppath="\${ns_appresdir}/site-lisp"
      INSTALL_ARCH_INDEP_EXTRA=
   fi
-
-  NS_OBJC_OBJ="nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o $ns_fontfile"
 fi
 CFLAGS="$tmp_CFLAGS"
 CPPFLAGS="$tmp_CPPFLAGS"
@@ -2403,19 +2446,6 @@ AC_SUBST([HAIKU_LIBS])
 AC_SUBST([HAIKU_OBJ])
 AC_SUBST([HAIKU_CXX_OBJ])
 AC_SUBST([HAIKU_CFLAGS])
-
-HAVE_WR=no
-if test "${with_wr}" = "yes"; then
-   if test "${window_system}" = "none"; then
-     window_system=wr
-   else
-     AS_VAR_APPEND([alternative_window_systems], [wr])
-   fi
-   HAVE_WR=yes
-   AC_DEFINE(HAVE_WR, 1,
-      [Define to 1 if you want to use the webrender.])
-fi
-AC_SUBST([HAVE_WR])
 
 ## $window_system is now set to the window system we will
 ## ultimately use.
@@ -6850,7 +6880,7 @@ fi
 
 echo
 
-if test "$HAVE_NS" = "yes"; then
+if test "$HAVE_NS" = "yes" || test "$HAVE_WR_NS" = "yes"; then
    echo
    AS_ECHO(["Run '${MAKE-make}' to build Emacs, then run 'src/emacs' to test it.
 Run '${MAKE-make} install' in order to build an application bundle.
@@ -6954,13 +6984,14 @@ dnl the use of force in the 'epaths-force' rule in Makefile.in.
 AC_CONFIG_COMMANDS([src/epaths.h], [
 if test "${opsys}" = "mingw32"; then
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force-w32
-elif test "$HAVE_NS" = "yes" && test "$EN_NS_SELF_CONTAINED" = "yes"; then
+elif (test "$HAVE_NS" = "yes" || test "$HAVE_WR_NS" = "yes") && \
+      test "$EN_NS_SELF_CONTAINED" = "yes"; then
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force-ns-self-contained
 else
   ${MAKE-make} MAKEFILE_NAME=do-not-make-Makefile epaths-force
 fi || AC_MSG_ERROR(['src/epaths.h' could not be made.])
 ], [GCC="$GCC" CPPFLAGS="$CPPFLAGS" opsys="$opsys" HAVE_NS="$HAVE_NS"
-    EN_NS_SELF_CONTAINED="$EN_NS_SELF_CONTAINED"])
+    HAVE_WR_NS="$HAVE_WR_NS" EN_NS_SELF_CONTAINED="$EN_NS_SELF_CONTAINED"])
 
 dnl NB we have to cheat and use the ac_... version because abs_top_srcdir
 dnl is not yet set, sigh.  Or we could use ../$srcdir/src/.gdbinit,

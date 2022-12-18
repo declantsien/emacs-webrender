@@ -169,6 +169,8 @@ extern int wr_select (int nfds, fd_set *readfds, fd_set *writefds,
 #define BLACK_PIX_DEFAULT(f) 0
 #define WHITE_PIX_DEFAULT(f) 65535
 
+extern const char *app_bundle_relocate (const char *);
+
 /* Symbol initializations implemented in each pgtk sources. */
 extern void syms_of_wrterm(void);
 extern void syms_of_wrterm_rust(void);

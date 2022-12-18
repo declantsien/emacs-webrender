@@ -953,8 +953,12 @@ load_pdump (int argc, char **argv)
   /* On MS-Windows, PATH_EXEC normally starts with a literal
      "%emacs_dir%", so it will never work without some tweaking.  */
   path_exec = w32_relocate (path_exec);
-#elif defined (HAVE_NS)
+#elif defined (NS_SELF_CONTAINED)
+#ifdef HAVE_NS
   path_exec = ns_relocate (path_exec);
+#elif defined (HAVE_WR)
+  path_exec = app_bundle_relocate (path_exec);
+#endif
 #endif
 
   /* Look for "emacs-FINGERPRINT.pdmp" in PATH_EXEC.  We hardcode
@@ -3219,8 +3223,10 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
 {
   const char *path, *p;
   Lisp_Object lpath, element, tem;
+#ifdef HAVE_NS
 #ifdef NS_SELF_CONTAINED
   void *autorelease = NULL;
+#endif
 #endif
   /* Default is to use "." for empty path elements.
      But if argument EMPTY is true, use nil instead.  */
@@ -3249,9 +3255,14 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
   if (!path)
     {
 #ifdef NS_SELF_CONTAINED
+#ifdef HAVE_NS
       /* ns_relocate needs a valid autorelease pool around it.  */
       autorelease = ns_alloc_autorelease_pool ();
       path = ns_relocate (defalt);
+#elif defined (HAVE_WR)
+      path = app_bundle_relocate (defalt);
+#endif
+
 #else
       path = defalt;
 #endif
@@ -3353,10 +3364,11 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
       else
 	break;
     }
-
+#ifdef HAVE_NS
 #ifdef NS_SELF_CONTAINED
   if (autorelease)
     ns_release_autorelease_pool (autorelease);
+#endif
 #endif
   return Fnreverse (lpath);
 }
