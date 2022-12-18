@@ -8,7 +8,7 @@ on:
         description: Name of artifact containing a emacs-builder plan yaml file
         type: string
         required: true
-      dmg_artifact:
+      tbz_artifact:
         description: Name of artifact containing a *.dmg files to release
         type: string
         required: true
@@ -38,7 +38,7 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.dmg_artifact }}
+          name: ${{ inputs.tbz_artifact }}
           path: builds
       - name: Publish tbz archive to a GitHub Release
         if: ${{ steps.dmg.outputs.result != 'fail' }}
