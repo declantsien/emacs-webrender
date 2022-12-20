@@ -1,4 +1,4 @@
-use std::{cell::RefCell, os::unix::prelude::AsRawFd, ptr, sync::Mutex, time::Instant};
+use std::{cell::RefCell, ptr, sync::Mutex, time::Instant};
 
 #[cfg(target_os = "macos")]
 use copypasta::osx_clipboard::OSXClipboardContext;
@@ -11,10 +11,9 @@ use copypasta::{
     x11_clipboard::{Clipboard, X11ClipboardContext},
 };
 
-use futures::future::FutureExt;
 use libc::{c_void, fd_set, pselect, sigset_t, timespec};
 use once_cell::sync::Lazy;
-use tokio::{io::unix::AsyncFd, io::Interest, runtime::Runtime, time::Duration};
+use tokio::{runtime::Runtime, time::Duration};
 #[cfg(all(feature = "wayland", not(any(target_os = "macos", windows))))]
 use winit::platform::unix::EventLoopWindowTargetExtUnix;
 use winit::{
@@ -25,8 +24,6 @@ use winit::{
     window::Window,
     window::WindowId,
 };
-
-use crate::future::batch_select;
 
 use surfman::Connection;
 use surfman::SurfaceType;
@@ -222,7 +219,6 @@ pub extern "C" fn wr_select(
 
     let event_loop_proxy = event_loop.create_proxy();
 
-    let timeout2 = unsafe { Duration::new((*timeout).tv_sec as u64, (*timeout).tv_nsec as u32) };
     let read_fds = FdSet(readfds);
     let write_fds = FdSet(writefds);
     let timeout = Timespec(timeout);
@@ -236,14 +232,6 @@ pub extern "C" fn wr_select(
 
             nfds = tokio_select_fds(nfds, &read_fds, &write_fds, &timeout) => {
                 let _ = event_loop_proxy.send_event(nfds);
-            }
-
-            // time out
-            _ = tokio::time::sleep(timeout2) => {
-                read_fds.clear();
-                write_fds.clear();
-
-                let _ = event_loop_proxy.send_event(0);
             }
 
             // received stop command from winit event_loop
@@ -296,84 +284,16 @@ pub extern "C" fn wr_select(
     return nfds_result.into_inner();
 }
 
-fn fd_set_to_async_fds(nfds: i32, fds: &FdSet) -> Vec<AsyncFd<i32>> {
-    if fds.0 == ptr::null_mut() {
-        return Vec::new();
+async fn tokio_select_fds(nfds: i32, readfds: &FdSet, writefds: &FdSet, timeout: &Timespec) -> i32 {
+    unsafe {
+        thread_select(
+            Some(pselect),
+            nfds,
+            readfds.0,
+            writefds.0,
+            ptr::null_mut(),
+            timeout.0,
+            ptr::null_mut(),
+        )
     }
-
-    let mut async_fds = Vec::new();
-
-    for fd in 0..nfds {
-        unsafe {
-            if libc::FD_ISSET(fd, fds.0) {
-                let async_fd_result = AsyncFd::new(fd);
-                if async_fd_result.is_err() {
-                    println!("AsyncFd err: {:?}", async_fd_result.unwrap_err());
-                    continue;
-                }
-
-                async_fds.push(async_fd_result.unwrap())
-            }
-        }
-    }
-
-    async_fds
-}
-
-fn async_fds_to_fd_set(fds: Vec<i32>, fd_set: &FdSet) {
-    if fd_set.0 == ptr::null_mut() {
-        return;
-    }
-
-    unsafe { libc::FD_ZERO(fd_set.0) }
-
-    for f in fds {
-        unsafe { libc::FD_SET(f, fd_set.0) }
-    }
-}
-
-async fn tokio_select_fds(
-    nfds: i32,
-    readfds: &FdSet,
-    writefds: &FdSet,
-    _timeout: &Timespec,
-) -> i32 {
-    let read_fds = fd_set_to_async_fds(nfds, readfds);
-    let write_fds = fd_set_to_async_fds(nfds, writefds);
-
-    let mut fd_futures = Vec::new();
-
-    for f in read_fds.iter() {
-        fd_futures.push(f.readable().boxed())
-    }
-
-    for f in write_fds.iter() {
-        fd_futures.push(f.writable().boxed())
-    }
-
-    let read_fds_count = read_fds.len();
-
-    let readliness = batch_select(fd_futures).await;
-
-    let mut readable_result = Vec::new();
-    let mut writable_result = Vec::new();
-
-    for (result, index) in readliness {
-        if result.is_err() {
-            continue;
-        }
-
-        if index < read_fds_count {
-            readable_result.push(read_fds[index].as_raw_fd())
-        } else {
-            writable_result.push(write_fds[index - read_fds_count].as_raw_fd())
-        }
-    }
-
-    let nfds = readable_result.len() + writable_result.len();
-
-    async_fds_to_fd_set(readable_result, readfds);
-    async_fds_to_fd_set(writable_result, writefds);
-
-    nfds as i32
 }
