@@ -22,6 +22,7 @@ mod event;
 mod event_loop;
 mod font_db;
 mod fringe;
+mod future;
 mod image;
 mod texture;
 mod util;
