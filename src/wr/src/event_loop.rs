@@ -190,6 +190,11 @@ impl FdSet {
     }
 }
 
+struct Timespec(*mut timespec);
+
+unsafe impl Send for Timespec {}
+unsafe impl Sync for Timespec {}
+
 #[no_mangle]
 pub extern "C" fn wr_select(
     nfds: i32,
@@ -217,10 +222,10 @@ pub extern "C" fn wr_select(
 
     let event_loop_proxy = event_loop.create_proxy();
 
+    let timeout2 = unsafe { Duration::new((*timeout).tv_sec as u64, (*timeout).tv_nsec as u32) };
     let read_fds = FdSet(readfds);
     let write_fds = FdSet(writefds);
-
-    let timeout = unsafe { Duration::new((*timeout).tv_sec as u64, (*timeout).tv_nsec as u32) };
+    let timeout = Timespec(timeout);
 
     let (select_stop_sender, mut select_stop_receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -228,17 +233,13 @@ pub extern "C" fn wr_select(
     let tokio_runtime = TOKIO_RUNTIME.lock().unwrap();
     tokio_runtime.spawn(async move {
         tokio::select! {
-            (readables, writables) = tokio_select_fds(nfds, &read_fds , &write_fds) => {
-                let nfds = readables.len() + writables.len();
 
-                async_fds_to_fd_set(readables, &read_fds);
-                async_fds_to_fd_set(writables, &write_fds);
-
-                let _ = event_loop_proxy.send_event(nfds as i32);
+            nfds = tokio_select_fds(nfds, &read_fds, &write_fds, &timeout) => {
+                let _ = event_loop_proxy.send_event(nfds);
             }
 
             // time out
-            _ = tokio::time::sleep(timeout) => {
+            _ = tokio::time::sleep(timeout2) => {
                 read_fds.clear();
                 write_fds.clear();
 
@@ -305,16 +306,9 @@ fn fd_set_to_async_fds(nfds: i32, fds: &FdSet) -> Vec<AsyncFd<i32>> {
     for fd in 0..nfds {
         unsafe {
             if libc::FD_ISSET(fd, fds.0) {
-                // let fd = fd.as_raw_fd();
-                // let interest = match (fd.is_read, fd.) {
-                //     (true, true) | (false, false) => ALL_INTEREST,
-                //     (true, false) => mio::Interest::READABLE,
-                //     (false, true) => mio::Interest::WRITABLE,
-                // };
-                let async_fd_result = AsyncFd::with_interest(fd, Interest::READABLE);
+                let async_fd_result = AsyncFd::new(fd);
                 if async_fd_result.is_err() {
                     println!("AsyncFd err: {:?}", async_fd_result.unwrap_err());
-                    // println!("{:?} {:?}", event, std::thread::current().id());
                     continue;
                 }
 
@@ -338,7 +332,12 @@ fn async_fds_to_fd_set(fds: Vec<i32>, fd_set: &FdSet) {
     }
 }
 
-async fn tokio_select_fds(nfds: i32, readfds: &FdSet, writefds: &FdSet) -> (Vec<i32>, Vec<i32>) {
+async fn tokio_select_fds(
+    nfds: i32,
+    readfds: &FdSet,
+    writefds: &FdSet,
+    _timeout: &Timespec,
+) -> i32 {
     let read_fds = fd_set_to_async_fds(nfds, readfds);
     let write_fds = fd_set_to_async_fds(nfds, writefds);
 
@@ -371,5 +370,10 @@ async fn tokio_select_fds(nfds: i32, readfds: &FdSet, writefds: &FdSet) -> (Vec<
         }
     }
 
-    (readable_result, writable_result)
+    let nfds = readable_result.len() + writable_result.len();
+
+    async_fds_to_fd_set(readable_result, readfds);
+    async_fds_to_fd_set(writable_result, writefds);
+
+    nfds as i32
 }
