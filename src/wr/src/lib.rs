@@ -30,11 +30,13 @@ mod wrterm;
 
 mod platform {
     #[cfg(target_os = "macos")]
-    pub mod macos;
+    pub mod macos {
+	pub mod utils;
+    }
 }
 
 #[cfg(target_os = "macos")]
-pub use crate::platform::macos;
+pub use crate::platform::macos::utils;
 
 pub use crate::wrterm::{tip_frame, wr_display_list};
 
