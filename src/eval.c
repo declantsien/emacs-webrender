@@ -3617,7 +3617,9 @@ do_one_unbind (union specbinding *this_binding, bool unwinding,
     {
     case SPECPDL_UNWIND:
       lisp_eval_depth = this_binding->unwind.eval_depth;
-      this_binding->unwind.func (this_binding->unwind.arg);
+      if (this_binding->unwind.arg != NULL) {
+	this_binding->unwind.func (this_binding->unwind.arg);
+      }
       break;
     case SPECPDL_UNWIND_ARRAY:
       xfree (this_binding->unwind_array.array);
