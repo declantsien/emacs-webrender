@@ -296,7 +296,7 @@ pub extern "C" fn wr_select(
     return nfds_result.into_inner();
 }
 
-fn fd_set_to_async_fds(nfds: i32, fds: &FdSet) -> Vec<AsyncFd<i32>> {
+fn fd_set_to_async_fds(nfds: i32, fds: &FdSet, interest: Interest) -> Vec<AsyncFd<i32>> {
     if fds.0 == ptr::null_mut() {
         return Vec::new();
     }
@@ -306,7 +306,7 @@ fn fd_set_to_async_fds(nfds: i32, fds: &FdSet) -> Vec<AsyncFd<i32>> {
     for fd in 0..nfds {
         unsafe {
             if libc::FD_ISSET(fd, fds.0) {
-                let async_fd_result = AsyncFd::new(fd);
+                let async_fd_result = AsyncFd::with_interest(fd, interest);
                 if async_fd_result.is_err() {
                     println!("AsyncFd err: {:?}", async_fd_result.unwrap_err());
                     continue;
@@ -338,8 +338,8 @@ async fn tokio_select_fds(
     writefds: &FdSet,
     _timeout: &Timespec,
 ) -> i32 {
-    let read_fds = fd_set_to_async_fds(nfds, readfds);
-    let write_fds = fd_set_to_async_fds(nfds, writefds);
+    let read_fds = fd_set_to_async_fds(nfds, readfds, Interest::READABLE);
+    let write_fds = fd_set_to_async_fds(nfds, writefds, Interest::WRITABLE);
 
     let mut fd_futures = Vec::new();
 
