@@ -266,9 +266,6 @@ pub extern "C" fn wr_select(
 
                     // notify emacs's code that a keyboard event arrived.
                     unsafe { libc::raise(libc::SIGIO) };
-
-                    // stop tokio select
-                    let _ = select_stop_sender.send(());
                 }
                 _ => {}
             },
@@ -280,6 +277,9 @@ pub extern "C" fn wr_select(
             _ => {}
         };
     });
+
+    // make sure tokio select is stopped
+    let _ = select_stop_sender.send(());
 
     return nfds_result.into_inner();
 }
