@@ -28,6 +28,7 @@ mod util;
 mod wrterm;
 
 mod platform {
+    #[cfg(target_os = "macos")]
     pub mod macos;
 }
 
