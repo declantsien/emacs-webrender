@@ -1981,10 +1981,10 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
   init_module_assertions (module_assertions);
 #endif
 
-#ifdef HAVE_NS
+#ifdef HAVE_NS || HAVE_WR
   if (!noninteractive)
     {
-#ifdef NS_IMPL_COCOA
+#ifdef NS_IMPL_COCOA || (HAVE_WR && NS_SELF_CONTAINED)
       /* Started from GUI? */
       bool go_home = (!ch_to_dir && !inhibit_window_system
 		      && !isatty (STDIN_FILENO));
