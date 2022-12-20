@@ -22,11 +22,22 @@ mod event;
 mod event_loop;
 mod font_db;
 mod fringe;
-mod future;
 mod image;
 mod texture;
 mod util;
 mod wrterm;
+
+pub mod select {
+    #[cfg(not(target_os = "macos"))]
+    pub use crate::select::future::tokio_select_fds;
+    #[cfg(target_os = "macos")]
+    pub use crate::select::thread::tokio_select_fds;
+
+    #[cfg(not(target_os = "macos"))]
+    pub mod future;
+    #[cfg(target_os = "macos")]
+    pub mod thread;
+}
 
 mod platform {
     #[cfg(target_os = "macos")]

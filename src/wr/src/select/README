@@ -1,0 +1,4 @@
+- thread_select on linux performances very badly (input lagging)
+- async_fd works very well on linux, but there are too many
+  "EXC_BAD_ACCESS (code=1, address=0x0)" on macOS. Also no input
+   lagging like linux
