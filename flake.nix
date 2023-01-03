@@ -246,21 +246,21 @@
 
             dontPatchShebangs = true; #straight_watch_callback.py: unsupported interpreter directive "#!/usr/bin/env -S python3 -u"
 
-            postFixup =
-              (old.postFixup or "")
-              + (
-                if withWebrender
-                then
-                  lib.concatStringsSep "\n" [
-                    (lib.optionalString stdenv.isLinux ''
-                      patchelf --set-rpath \
-                        "$(patchelf --print-rpath "$out/bin/.emacs-29.0.60-wrapped"):${lib.makeLibraryPath rpathLibs}" \
-                        "$out/bin/.emacs-29.0.60-wrapped"
-                        patchelf --add-needed "libfontconfig.so" "$out/bin/.emacs-29.0.60-wrapped"
-                    '')
-                  ]
-                else ""
-              );
+            # postFixup =
+            #   (old.postFixup or "")
+            #   + (
+            #     if withWebrender
+            #     then
+            #       lib.concatStringsSep "\n" [
+            #         (lib.optionalString stdenv.isLinux ''
+            #           patchelf --set-rpath \
+            #             "$(patchelf --print-rpath "$out/bin/.emacs-29.0.60-wrapped"):${lib.makeLibraryPath rpathLibs}" \
+            #             "$out/bin/.emacs-29.0.60-wrapped"
+            #             patchelf --add-needed "libfontconfig.so" "$out/bin/.emacs-29.0.60-wrapped"
+            #         '')
+            #       ]
+            #     else ""
+            #   );
           });
       };
     };
