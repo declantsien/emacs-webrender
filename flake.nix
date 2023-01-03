@@ -116,8 +116,6 @@
           (
             final.emacsGit.override
             {
-              withSQLite3 = true;
-              nativeComp = true;
               withImageMagick = true;
               inherit (prev) imagemagick;
             }
