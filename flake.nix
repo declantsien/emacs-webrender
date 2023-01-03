@@ -108,7 +108,7 @@
         #rust nightly date
         emacsng-sources = prev.callPackages ./nix/_sources/generated.nix {};
         emacsng-source = emacsng-sources.emacsng.src;
-        locked-date = prev.lib.removePrefix "nightly-" (prev.lib.removeSuffix "\n" (builtins.readFile ./rust-toolchain));
+        locked-date = "2022-10-24";
       in {
         emacsng = with prev; let
           withWebrender = true;
@@ -164,7 +164,7 @@
             makeFlags =
               (old.makeFlags or [])
               ++ [
-                # "CARGO_FLAGS=--offline" #nightly channel
+                "CARGO_FLAGS=--offline" #nightly channel
               ];
 
             #custom configure Flags Setting
