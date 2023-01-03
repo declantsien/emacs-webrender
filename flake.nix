@@ -256,9 +256,9 @@
                   lib.concatStringsSep "\n" [
                     (lib.optionalString stdenv.isLinux ''
                       patchelf --set-rpath \
-                        "$(patchelf --print-rpath "$out/bin/.emacs-28.0.50-wrapped"):${lib.makeLibraryPath rpathLibs}" \
-                        "$out/bin/.emacs-28.0.50-wrapped"
-                        patchelf --add-needed "libfontconfig.so" "$out/bin/.emacs-28.0.50-wrapped"
+                        "$(patchelf --print-rpath "$out/bin/.emacs-29.0.60-wrapped"):${lib.makeLibraryPath rpathLibs}" \
+                        "$out/bin/.emacs-29.0.60-wrapped"
+                        patchelf --add-needed "libfontconfig.so" "$out/bin/.emacs-29.0.60-wrapped"
                     '')
                   ]
                 else ""
