@@ -1,22 +1,21 @@
 {
     "emacsng": {
-        "pinned": false,
-        "cargoLock": null,
+        "cargoLocks": null,
+        "extract": null,
         "name": "emacsng",
+        "passthru": null,
+        "pinned": false,
         "src": {
             "deepClone": false,
-            "owner": "emacs-ng",
-            "name": null,
-            "repo": "emacs-ng",
-            "type": "github",
-            "sha256": "sha256-6J8qsl+fQExCY6oV4E/uko23YHAK1YNPQxdINANMrEk=",
-            "rev": "1e465792a8337d6c12df06304cbc72677f78d090",
+            "fetchSubmodules": true,
             "leaveDotGit": false,
-            "fetchSubmodules": true
+            "name": null,
+            "owner": "declantsien",
+            "repo": "emacs-ng",
+            "rev": "c18470efe98a3ec33ff18561377548527140cb27",
+            "sha256": "sha256-QTxD6c+nu9ajsiJOqsH3YJXQ9r/ryrTB28uWskKuLJ4=",
+            "type": "github"
         },
-        "version": "1e465792a8337d6c12df06304cbc72677f78d090",
-        "passthru": null,
-        "extract": null,
-        "rustGitDeps": null
+        "version": "c18470efe98a3ec33ff18561377548527140cb27"
     }
 }
