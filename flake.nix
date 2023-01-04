@@ -95,7 +95,6 @@
                 in (final.emacsGit.override {
                   withImageMagick = true;
                   withNS = false;
-                  withX = false;
                   inherit (prev) imagemagick;
                 }).overrideAttrs (old:
                   let
