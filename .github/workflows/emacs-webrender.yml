@@ -1,5 +1,5 @@
 ---
-name: EmacsNG Webrender
+name: macOS dmg
 on:
   schedule:
     - cron: "0 23 * * *"

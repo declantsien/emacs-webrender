@@ -1,4 +1,4 @@
-name: "CI Nix"
+name: "Nix flake"
 on:
   pull_request:
   push:
