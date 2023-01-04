@@ -1,2 +1,23 @@
-latest updates here
-https://github.com/declantsien/emacs-ng/
+#+html: <p align="center"><img width="192px" src="https://github.com/d12frosted/homebrew-emacs-plus/blob/master/icons/original/nobu417-big-sur.png" alt="Logo"></p>
+#+html: <h1 align="center">Emacs Webrender Builds</h1>
+#+html: <p align="center">
+#+html: <a href="https://github.com/declantsien/emacs-ng/actions/workflows/test.yml"><img alt="General" src="https://github.com/declantsien/emacs-ng/actions/workflows/test.yml/badge.svg"></a>
+#+html: <a href="https://github.com/declantsien/emacs-webrender/actions/workflows/nix-flake.yaml"><img alt="Nix flake build" src="https://github.com/declantsien/emacs-webrender/actions/workflows/nix-flake.yaml/badge.svg"></a>
+#+html: <a href="https://github.com/declantsien/emacs-webrender/actions/workflows/macos-dmg.yml"><img alt="macOS dmg" src="https://github.com/declantsien/emacs-webrender/actions/workflows/macos-dmg.yml/badge.svg"></a>
+#+html: </p">
+
+** Source
+https://github.com/declantsien/emacs-ng/tree/emacs-29
+
+** Builds
+*** Nix flake
+ Nix flake [[./flake.nix]]
+  cachinx emacs-webrender
+
+*** Guix channel
+  https://git.sr.ht/~declantsien/guix-channel/tree/master/item/declantsien/packages/emacs.scm#L35
+
+*** macOS built script
+   https://github.com/declantsien/build-emacs-webrender
+**** Prebuilt macOS binary
+https://github.com/declantsien/emacs-webrender/releases
