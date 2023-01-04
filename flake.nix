@@ -193,8 +193,9 @@
               ++ lib.optionals withWebrender [
                 "--with-webrender"
               ]
-              ++ lib.optionals (! withWebrender) [
-                "--with-harfbuzz"
+              ++ lib.optionals
+                (stdenv.isDarwin && withWebrender) [
+                  "--disable-webrender-self-contained"
               ]
               ++ lib.optionals stdenv.isLinux [
                 "--with-dbus"
