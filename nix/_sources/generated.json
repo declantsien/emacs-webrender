@@ -1,8 +1,8 @@
 {
-    "emacsng": {
+    "emacs-webrender": {
         "cargoLocks": null,
         "extract": null,
-        "name": "emacsng",
+        "name": "emacs-webrender",
         "passthru": null,
         "pinned": false,
         "src": {

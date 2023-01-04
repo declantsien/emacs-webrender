@@ -1,8 +1,8 @@
 [[commands]]
-name = "update-emacsNG"
+name = "update-emacs-webrender"
 category = "Update"
-command = "nix flake lock --update-input emacsNG-source"
-help = "update EmacsNg src"
+command = "nix flake lock --update-input emacsWebrenderSource"
+help = "update EmacsWebrender src"
 
 [[commands]]
 name = "update-rustOverlay"
@@ -22,50 +22,35 @@ category = "Update"
 command = "nix flake lock --update-input master"
 help = "update nixpkgs of master channel"
 
-
 [[commands]]
 name = "emacs"
 command = '''
-        $(nix-build . --option substituters "https://cache.nixos.org https://emacsng.cachix.org" --option trusted-public-keys "emacsng.cachix.org-1:i7wOr4YpdRpWWtShI8bT6V7lOTnPeI7Ho6HaZegFWMI= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" --no-out-link)/bin/emacs $@
+        $(nix-build . --option substituters "https://cache.nixos.org https://emacs-webrender.cachix.org")/bin/emacs $@
         '''
-help = "launch emacsNG"
-category = "emacsNG"
+help = "launch emacs-webrender"
+category = "emacsWebrender"
 
 [[commands]]
-name = "push-cachix"
-command = '''
-          nix-shell --command "cachix-emacsNG"
-        '''
-help = "push emacsNG binary cache to Cachix | -> nix/cachix-key.secrets"
+name = "cachix-push"
 category = "update"
-
-[[commands]]
-name = "cachix-emacsNG"
-category = "update"
-command = "nix-build | cachix push emacsng"
+command = "nix-build | cachix push emacs-webrender"
 help = "nix-build localy then push to cachix"
 
 [[commands]]
-name = "build-bindings"
-command = "cargo build --manifest-path=./rust_src/ng-bindgen/Cargo.toml"
-help = "cargo build ng-bindgen"
-category = "rust-build"
-
-[[commands]]
-name = "emacsng-lock"
+name = "lock"
 category = "develop"
 command = '''
-        sed -i 's|\#emacsNGSource = emacs|emacsNGSource = emacs|' flake.nix
-        nix flake lock --update-input emacsNG-source
+        sed -i 's|\#emacsWebrenderSource = emacs|emacsWebrenderSource = emacs|' flake.nix
+        nix flake lock --update-input emacsWebrender-source
         '''
 help = "lock rev for bindary cache build"
 
 [[commands]]
-name = "emacsng-develop"
-category = "emacsNG"
+name = "develop"
+category = "emacsWebrender"
 command = '''
         sed -i 's|git+https://github.com/emacs-ng/emacs-ng?submodule=1|path:./.|' flake.nix
-        nix flake lock --update-input emacsNG-source
+        nix flake lock --update-input emacsWebrender-source
         '''
 help = "using src = ./. for develop mode"
 # [[env]]

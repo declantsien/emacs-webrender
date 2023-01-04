@@ -1,5 +1,5 @@
 {
-  description = "emacsng Nix flake";
+  description = "Emacs Webrender Nix flake";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -75,26 +75,26 @@
             };
 
           apps = {
-            emacsng = flake-utils.lib.mkApp {
-              drv = packages.emacsng;
+            emacsWebrender = flake-utils.lib.mkApp {
+              drv = packages.emacsWebrender;
               exePath = "/bin/emacs";
             };
             emacsclient = flake-utils.lib.mkApp {
-              drv = packages.emacsng;
+              drv = packages.emacsWebrender;
               exePath = "/bin/emacsclient";
             };
           };
 
-          defaultApp = apps.emacsng;
+          defaultApp = apps.emacsWebrender;
 
           packages =
             flake-utils.lib.flattenTree
             {
               inherit
                 (pkgs)
-                emacsng
+                emacsWebrender
                 ;
-              default = pkgs.emacsng;
+              default = pkgs.emacsWebrender;
             };
 
           hydraJobs = {
@@ -106,11 +106,11 @@
     // {
       overlays.default = final: prev: let
         #rust nightly date
-        emacsng-sources = prev.callPackages ./nix/_sources/generated.nix {};
-        emacsng-source = emacsng-sources.emacsng.src;
+        emacsWebrenderSources = prev.callPackages ./nix/_sources/generated.nix {};
+        emacsWebrenderSource = emacsWebrenderSources.emacs-webrender.src;
         locked-date = "2022-10-24";
       in {
-        emacsng = with prev; let
+        emacsWebrender = with prev; let
           withWebrender = true;
         in
           (
@@ -138,9 +138,9 @@
                 libxcb
               ];
           in rec {
-            name = "emacsng-" + version;
-            src = emacsng-source;
-            version = builtins.substring 0 7 emacsng-source.rev;
+            name = "emacs-webrender-" + version;
+            src = emacsWebrenderSource;
+            version = builtins.substring 0 7 emacsWebrenderSource.rev;
             # https://github.com/NixOS/nixpkgs/blob/22.11/pkgs/applications/networking/browsers/firefox/common.nix#L574
             # Firefox use this.
             # guix has cargo-utils to fix checksum, won't be useful on nix though
