@@ -8,7 +8,7 @@ on:
         description: Name of artifact containing a emacs-builder plan yaml file
         type: string
         required: true
-      tbz_artifact:
+      dmg_artifact:
         description: Name of artifact containing a *.dmg files to release
         type: string
         required: true
@@ -38,12 +38,20 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.tbz_artifact }}
+          name: ${{ inputs.dmg_artifact }}
           path: builds
-      - name: Publish tbz archive to a GitHub Release
+      - name: Publish disk images to a GitHub Release
         if: ${{ steps.dmg.outputs.result != 'fail' }}
         run: >-
           bin/emacs-builder -l debug release --plan build-plan.yml publish
-          $(find builds -name '*.tbz')
+          $(find builds -name '*.dmg' -or -name '*.sha256')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Trigger update casks workflow in homebrew tap
+        if: ${{ steps.dmg.outputs.result != 'fail' && inputs.testBuildName == '' }}
+        run: >-
+          gh workflow run --repo declantsien/homebrew-emacs-webrender update-casks.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
+      - run: echo 'No DMG artifact available, was there a new commit to build?'
+        if: ${{ steps.dmg.outputs.result == 'fail' }}

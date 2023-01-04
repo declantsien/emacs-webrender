@@ -132,10 +132,10 @@ jobs:
     # Only run if check for existing release and asset failed.
     if: ${{ needs.plan.outputs.check == 'fail' }}
     steps:
-      - name: Checkout build-emacs-wr-for-macos repo
+      - name: Checkout build-emacs-webrender repo
         uses: actions/checkout@v2
         with:
-          repository: declantsien/build-emacs-wr-for-macos
+          repository: declantsien/build-emacs-webrender
           ref: ${{ needs.prepare.outputs.builder_sha }}
           path: builder
       - uses: ruby/setup-ruby@v1
@@ -202,10 +202,48 @@ jobs:
         run: |
           find * -name '*.tbz' -exec tar xvjf "{}" \;
         working-directory: builds
+      # - name: Install the Apple signing certificate
+      #   run: |
+      #     # create variables
+      #     CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+      #     KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+
+      #     # import certificate and provisioning profile from secrets
+      #     echo -n "$CERT_BASE64" | base64 --decode --output "$CERTIFICATE_PATH"
+
+      #     # create temporary keychain
+      #     security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+      #     security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+      #     security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+      #     # import certificate to keychain
+      #     security import "$CERTIFICATE_PATH" -P "$CERT_PASSWORD" -A \
+      #       -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+      #     security list-keychain -d user -s "$KEYCHAIN_PATH"
+      #   env:
+      #     CERT_BASE64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+      #     CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+      #     KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      - name: Sign, package and notarize build
+        run: >-
+          # bin/emacs-builder -l debug package -v --plan build-plan.yml
+          # --sign --remove-source-dir
+          bin/emacs-builder -l debug package -v --plan build-plan.yml
+          --remove-source-dir
+        # env:
+        #   AC_USERNAME: ${{ secrets.AC_USERNAME }}
+        #   AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
+        #   AC_PROVIDER: ${{ secrets.AC_PROVIDER }}
+        #   AC_SIGN_IDENTITY: ${{ secrets.AC_SIGN_IDENTITY }}
       - name: Upload disk image artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: tbz
+          name: dmg
           path: |
-            builds/*.tbz
+            builds/*.dmg
+            builds/*.sha*
           if-no-files-found: error
+      # - name: Clean up keychain used for signing certificate
+      #   if: ${{ always() }}
+      #   run: |
+      #     security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db"

@@ -67,6 +67,6 @@ jobs:
     uses: ./.github/workflows/_release.yml
     with:
       plan_artifact: build-plan
-      tbz_artifact: tbz
+      dmg_artifact: dmg
     secrets:
       TAP_REPO_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
