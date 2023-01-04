@@ -94,6 +94,8 @@
                 let withWebrender = true;
                 in (final.emacsGit.override {
                   withImageMagick = true;
+                  withNS = false;
+                  withX = false;
                   inherit (prev) imagemagick;
                 }).overrideAttrs (old:
                   let
@@ -151,6 +153,7 @@
                         "--with-zlib"
                         "--with-dumping=pdumper"
                       ] ++ lib.optionals withWebrender [ "--with-webrender" ]
+
                       ++ lib.optionals (stdenv.isDarwin && withWebrender)
                       [ "--disable-webrender-self-contained" ]
                       ++ lib.optionals stdenv.isLinux [ "--with-dbus" ];
