@@ -118,7 +118,8 @@
                   in rec {
                     name = "emacs-webrender-" + version;
                     src = emacsWebrenderSource;
-                    version = builtins.substring 0 7 emacsWebrenderSource.rev;
+                    emacsVersion = "29.0.60";
+                    version = emacsVersion + "-" + builtins.substring 0 7 emacsWebrenderSource.rev;
                     # https://github.com/NixOS/nixpkgs/blob/22.11/pkgs/applications/networking/browsers/firefox/common.nix#L574
                     # Firefox use this.
                     # guix has cargo-utils to fix checksum, won't be useful on nix though
@@ -197,21 +198,21 @@
                     dontPatchShebangs =
                       true; # straight_watch_callback.py: unsupported interpreter directive "#!/usr/bin/env -S python3 -u"
 
-                    # postFixup =
-                    #   (old.postFixup or "")
-                    #   + (
-                    #     if withWebrender
-                    #     then
-                    #       lib.concatStringsSep "\n" [
-                    #         (lib.optionalString stdenv.isLinux ''
-                    #           patchelf --set-rpath \
-                    #             "$(patchelf --print-rpath "$out/bin/.emacs-29.0.60-wrapped"):${lib.makeLibraryPath rpathLibs}" \
-                    #             "$out/bin/.emacs-29.0.60-wrapped"
-                    #             patchelf --add-needed "libfontconfig.so" "$out/bin/.emacs-29.0.60-wrapped"
-                    #         '')
-                    #       ]
-                    #     else ""
-                    #   );
+                    postFixup =
+                      (old.postFixup or "")
+                      + (
+                        if withWebrender
+                        then
+                          lib.concatStringsSep "\n" [
+                            (lib.optionalString stdenv.isLinux ''
+                              patchelf --set-rpath \
+                                "$(patchelf --print-rpath "$out/bin/emacs-$emacsVersion"):${lib.makeLibraryPath rpathLibs}" \
+                                "$out/bin/emacs-$emacsVersion"
+                                patchelf --add-needed "libfontconfig.so" "$out/bin/emacs-$emacsVersion"
+                            '')
+                          ]
+                        else ""
+                      );
                   });
             };
         };
