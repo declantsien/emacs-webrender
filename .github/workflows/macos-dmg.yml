@@ -38,6 +38,8 @@ jobs:
   release:
     name: Release
     needs: [build]
+    # Only run if check for existing release and asset failed.
+    if: ${{ needs.build.plan.outputs.check == 'fail' }}
     uses: ./.github/workflows/_release.yml
     with:
       plan_artifact: build-plan
