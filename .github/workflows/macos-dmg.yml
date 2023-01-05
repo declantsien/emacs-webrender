@@ -22,7 +22,7 @@ jobs:
     uses: ./.github/workflows/_build.yml
     with:
       os: macos-11
-      git_ref: emacs-29
+      git_ref: vendor-master
       git_sha: ${{ github.event.inputs.git_sha }}
       build_args: --native-comp
     secrets:

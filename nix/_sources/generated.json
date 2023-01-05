@@ -12,10 +12,10 @@
             "name": null,
             "owner": "declantsien",
             "repo": "emacs-ng",
-            "rev": "37b4343a2ebc9c30ae96f84d10fc5f3ad9265da4",
-            "sha256": "sha256-VKA7Wq6AMZ8SoaoKxPB0fWGZ30L9nupjzmRz6/uv4ig=",
+            "rev": "622d79e1e1bad30ff66de59191e20143aefedcea",
+            "sha256": "sha256-04bvW5akuuPphbpiuk3l17F093CvROct6Ejk5oJ7lVY=",
             "type": "github"
         },
-        "version": "37b4343a2ebc9c30ae96f84d10fc5f3ad9265da4"
+        "version": "622d79e1e1bad30ff66de59191e20143aefedcea"
     }
 }

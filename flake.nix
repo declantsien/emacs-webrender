@@ -118,7 +118,7 @@
                   in rec {
                     name = "emacs-webrender-" + version;
                     src = emacsWebrenderSource;
-                    emacsVersion = "29.0.60";
+                    emacsVersion = "30.0.50";
                     version = emacsVersion + "-" + builtins.substring 0 7 emacsWebrenderSource.rev;
                     # https://github.com/NixOS/nixpkgs/blob/22.11/pkgs/applications/networking/browsers/firefox/common.nix#L574
                     # Firefox use this.
