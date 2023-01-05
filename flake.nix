@@ -172,7 +172,7 @@
                       final.rust-bin.nightly."${locked-date}".default
                       git
                     ] ++ lib.optionals withWebrender
-                      (with xorg; [ python3 rpathLibs ])
+                      ([python3] ++ rpathLibs)
                       ++ lib.optionals stdenv.isDarwin
                       (with darwin.apple_sdk.frameworks;
                         with darwin;
