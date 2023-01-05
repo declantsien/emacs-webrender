@@ -103,6 +103,8 @@
                     rpathLibs = with xorg;
                       lib.optionals (stdenv.isLinux && withWebrender) [
                         libX11
+                        libXrandr
+                        libXi
                         libGLU
                         libGL
                         libXpm
