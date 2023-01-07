@@ -6,7 +6,7 @@
 #+html: </p">
 
 ** Source
-https://github.com/declantsien/emacs-ng/tree/develop
+https://github.com/declantsien/emacs-ng/tree/feature/webrender
 
 ** Builds
 *** [[https://git.sr.ht/~declantsien/guix-channel/tree/master/item/declantsien/packages/emacs.scm#L35][Guix channel]]

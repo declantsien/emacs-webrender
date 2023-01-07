@@ -1,5 +1,5 @@
 # nvfetcher.toml
 [emacs-webrender]
 src.git = "https://github.com/declantsien/emacs-ng"
-src.branch = "vendor-master"
+src.branch = "vendor/webrender"
 fetch.github = "declantsien/emacs-ng"
