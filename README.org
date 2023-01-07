@@ -15,7 +15,7 @@ git clone https://git.sr.ht/~declantsien/guix-channel/ ~/src
 guix build -L ~/src/guix-channel -e "(@@ (declantsien packages emacs) emacs-webrender)"
 #+end_src
 *** Nix flake
-=nix shell declantsien/emacs-webrender#emacsWebrender=
+=nix build github:declantsien/emacs-webrender#emacsWebrender=
 **** Using cachix
 https://app.cachix.org/cache/emacs-webrender#pull
 
