@@ -119,7 +119,8 @@
                     name = "emacs-webrender-" + version;
                     src = emacsWebrenderSource;
                     emacsVersion = "30.0.50";
-                    version = emacsVersion + "-" + builtins.substring 0 7 emacsWebrenderSource.rev;
+                    version = emacsVersion + "-"
+                      + builtins.substring 0 7 emacsWebrenderSource.rev;
                     # https://github.com/NixOS/nixpkgs/blob/22.11/pkgs/applications/networking/browsers/firefox/common.nix#L574
                     # Firefox use this.
                     # guix has cargo-utils to fix checksum, won't be useful on nix though
@@ -154,7 +155,10 @@
                         "--with-compress-install"
                         "--with-zlib"
                         "--with-dumping=pdumper"
-                      ] ++ lib.optionals withWebrender [ "--with-webrender" ]
+                      ] ++ lib.optionals withWebrender [
+                        "--with-webrender"
+                        "--enable-webrender-x11"
+                      ]
 
                       ++ lib.optionals (stdenv.isDarwin && withWebrender)
                       [ "--disable-webrender-self-contained" ]
@@ -174,8 +178,7 @@
                       custom-llvmPackages.libclang
                       final.rust-bin.nightly."${locked-date}".default
                       git
-                    ] ++ lib.optionals withWebrender
-                      ([python3] ++ rpathLibs)
+                    ] ++ lib.optionals withWebrender ([ python3 ] ++ rpathLibs)
                       ++ lib.optionals stdenv.isDarwin
                       (with darwin.apple_sdk.frameworks;
                         with darwin;
@@ -198,21 +201,19 @@
                     dontPatchShebangs =
                       true; # straight_watch_callback.py: unsupported interpreter directive "#!/usr/bin/env -S python3 -u"
 
-                    postFixup =
-                      (old.postFixup or "")
-                      + (
-                        if withWebrender
-                        then
-                          lib.concatStringsSep "\n" [
-                            (lib.optionalString stdenv.isLinux ''
-                              patchelf --set-rpath \
-                                "$(patchelf --print-rpath "$out/bin/emacs-$emacsVersion"):${lib.makeLibraryPath rpathLibs}" \
-                                "$out/bin/emacs-$emacsVersion"
-                                patchelf --add-needed "libfontconfig.so" "$out/bin/emacs-$emacsVersion"
-                            '')
-                          ]
-                        else ""
-                      );
+                    postFixup = (old.postFixup or "") + (if withWebrender then
+                      lib.concatStringsSep "\n" [
+                        (lib.optionalString stdenv.isLinux ''
+                          patchelf --set-rpath \
+                            "$(patchelf --print-rpath "$out/bin/emacs-$emacsVersion"):${
+                              lib.makeLibraryPath rpathLibs
+                            }" \
+                            "$out/bin/emacs-$emacsVersion"
+                            patchelf --add-needed "libfontconfig.so" "$out/bin/emacs-$emacsVersion"
+                        '')
+                      ]
+                    else
+                      "");
                   });
             };
         };
