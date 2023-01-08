@@ -3,13 +3,13 @@
 {
   emacs-webrender = {
     pname = "emacs-webrender";
-    version = "651e309a61b559719a39cb5e59c8464735523ef7";
+    version = "aa37895e38141752e3fa04d15df4524d68636958";
     src = fetchFromGitHub ({
       owner = "declantsien";
       repo = "emacs-ng";
-      rev = "651e309a61b559719a39cb5e59c8464735523ef7";
+      rev = "aa37895e38141752e3fa04d15df4524d68636958";
       fetchSubmodules = false;
-      sha256 = "sha256-rKIB2pYpv43xTIshf2MH+t3GJbeGp7sP1k3IxDrfQ0g=";
+      sha256 = "sha256-1hIFeWL56RiZo489nm7if18UI7N5p9fe+f4aDAr6r/U=";
     });
   };
 }
