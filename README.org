@@ -1,9 +1,23 @@
+#+html: <h3 align="left">Not worth it. Too much work. Abandon...
+Would be easier if we just use Webrender as an alternative rendering engine like Cairo.
+We could just obtain an OpenGL context from native_display_handle using surfman. Not sure
+how much benefits we would gain from there, since the underline core is still Emacs's redisplay.
+
+Also, Winit is in early stage. And Emacs Webrender output implementation is not fully finished yet.
+#+html: <p/>
 #+html: <h1 align="center">Emacs Webrender Builds</h1>
 #+html: <p align="center">
 #+html: <a href="https://github.com/declantsien/emacs-ng/actions/workflows/test.yml"><img alt="General" src="https://github.com/declantsien/emacs-ng/actions/workflows/test.yml/badge.svg"></a>
 #+html: <a href="https://github.com/declantsien/emacs-webrender/actions/workflows/nix-flake.yaml"><img alt="Nix flake build" src="https://github.com/declantsien/emacs-webrender/actions/workflows/nix-flake.yaml/badge.svg"></a>
 #+html: <a href="https://github.com/declantsien/emacs-webrender/actions/workflows/macos-dmg.yml"><img alt="macOS dmg" src="https://github.com/declantsien/emacs-webrender/actions/workflows/macos-dmg.yml/badge.svg"></a>
 #+html: </p">
+
+Not worth it. Too much work. Abandon...
+Would be easier if we just use Webrender as an alternative rendering engine like Cairo.
+We could just obtain an OpenGL context from native_display_handle using surfman. Not sure
+how much benefits we would gain from there, since the underline core is still Emacs's redisplay.
+
+Also, Winit is in early stage. And Emacs Webrender output implementation is not fully finished yet.
 
 ** Source
 https://github.com/declantsien/emacs-ng/tree/feature/webrender
