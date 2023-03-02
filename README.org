@@ -1,10 +1,3 @@
-#+html: <h3 align="left">Not worth it. Too much work. Abandon...
-Would be easier if we just use Webrender as an alternative rendering engine like Cairo.
-We could just obtain an OpenGL context from native_display_handle using surfman. Not sure
-how much benefits we would gain from there, since the underline core is still Emacs's redisplay.
-
-Also, Winit is in early stage. And Emacs Webrender output implementation is not fully finished yet.
-#+html: <p/>
 #+html: <h1 align="center">Emacs Webrender Builds</h1>
 #+html: <p align="center">
 #+html: <a href="https://github.com/declantsien/emacs-ng/actions/workflows/test.yml"><img alt="General" src="https://github.com/declantsien/emacs-ng/actions/workflows/test.yml/badge.svg"></a>
@@ -12,32 +5,24 @@ Also, Winit is in early stage. And Emacs Webrender output implementation is not 
 #+html: <a href="https://github.com/declantsien/emacs-webrender/actions/workflows/macos-dmg.yml"><img alt="macOS dmg" src="https://github.com/declantsien/emacs-webrender/actions/workflows/macos-dmg.yml/badge.svg"></a>
 #+html: </p">
 
-Not worth it. Too much work. Abandon...
-Would be easier if we just use Webrender as an alternative rendering engine like Cairo.
-We could just obtain an OpenGL context from native_display_handle using surfman. Not sure
-how much benefits we would gain from there, since the underline core is still Emacs's redisplay.
-
-Also, Winit is in early stage. And Emacs Webrender output implementation is not fully finished yet.
-
 ** Source
-https://github.com/declantsien/emacs-ng/tree/feature/webrender
+https://github.com/emacs-ng/emacs-ng/
 
-** Builds
-*** [[https://git.sr.ht/~declantsien/guix-channel/tree/master/item/declantsien/packages/emacs.scm#L35][Guix channel]]
-#+begin_src shell
-git clone https://git.sr.ht/~declantsien/guix-channel/ ~/src
-guix build -L ~/src/guix-channel -e "(@@ (declantsien packages emacs) emacs-webrender)"
-#+end_src
-*** Nix flake
-=nix build github:declantsien/emacs-webrender#emacsWebrender=
-**** Using cachix
-https://app.cachix.org/cache/emacs-webrender#pull
+** PGTK with Webrender
+PGTK with Webrender is replace Cairo drawing with Firefox's Webrender.
 
-*** [[https://github.com/declantsien/build-emacs-webrender][macOS build script]]
-#+begin_src shell
-git clone https://github.com/declantsien/build-emacs-webrender
-cd ./build-emacs-webrender
-./build-emacs-for-macos [branch]
-#+end_src
-**** Prebuilt macOS binary
-https://github.com/declantsien/emacs-webrender/releases
+~ ./configure --with-pgtk --with-webrender~
+
+** TODO Nextstep with Webrender
+The task is tracked [[https://github.com/emacs-ng/emacs-ng/issues/497][here]]. It should be as easy as adding PGTK support. But I am
+currently not have the desire and not have the time to do that. Anybody are welcome to claim that
+task.
+
+** TODO Other Emacs window systems x11/w32/haiku
+These should be the same as PGTK and Nextstep. By creating an issue on [[https://github.com/emacs-ng/emacs-ng/issues][emacs-ng issues]] following
+this [[https://github.com/emacs-ng/emacs-ng/issues/497][here]].
+** Winit(tao) window system
+*** Compiling with winit
+~./configure --with-winit --enable-winit-pselect --with-wr-gl=[surfman|glutin]~
+*** Compiling with tao
+~./configure --with-winit=tao --enable-winit-pselect --with-wr-gl=[surfman|glutin|gtk3]~
